@@ -14,6 +14,10 @@ connectDB();
 const app = express();
 const port = process.env.PORT || 3001;
 
+// Trust proxy - Required for Render.com and rate limiting
+// This allows Express to trust the X-Forwarded-For header
+app.set('trust proxy', 1);
+
 // Security Middleware
 app.use(securityMiddleware);
 
