@@ -220,13 +220,9 @@ router.post('/ocr', [auth, upload.single('receipt')], async (req, res) => {
     return res.status(400).json({ msg: 'No file uploaded.' });
   }
 
-  const worker = await createWorker();
+  const worker = await createWorker('por');
 
   try {
-    await worker.load();
-    await worker.loadLanguage('por'); // Language set to Portuguese
-    await worker.initialize('por');
-
     const {
       data: { text },
     } = await worker.recognize(req.file.buffer);

@@ -9,6 +9,7 @@ const OcrUploadPage = () => {
   const [message, setMessage] = useState('');
   const [extractedTransactions, setExtractedTransactions] = useState([]);
   const [showCamera, setShowCamera] = useState(false);
+  const [facingMode, setFacingMode] = useState('environment'); // 'user' = frontal, 'environment' = traseira
 
   const webcamRef = useRef(null);
 
@@ -25,19 +26,39 @@ const OcrUploadPage = () => {
   const capture = useCallback(() => {
     const capturedImageSrc = webcamRef.current.getScreenshot();
     if (capturedImageSrc) {
-        setImageSrc(capturedImageSrc);
-        // Convert base64 to blob for file upload
-        fetch(capturedImageSrc)
-        .then(res => res.blob())
-        .then(blob => {
-            const capturedFile = new File([blob], "webcam-receipt.jpeg", { type: "image/jpeg" });
-            setFile(capturedFile);
-        });
+        // Corrigir orientação da imagem
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Definir dimensões do canvas
+            canvas.width = img.width;
+            canvas.height = img.height;
+
+            // Desenhar imagem corrigida
+            ctx.drawImage(img, 0, 0);
+
+            // Converter para blob
+            canvas.toBlob((blob) => {
+                const correctedImageSrc = URL.createObjectURL(blob);
+                setImageSrc(correctedImageSrc);
+
+                const capturedFile = new File([blob], "webcam-receipt.jpeg", { type: "image/jpeg" });
+                setFile(capturedFile);
+            }, 'image/jpeg', 0.95);
+        };
+        img.src = capturedImageSrc;
+
         setShowCamera(false);
         setExtractedTransactions([]);
         setMessage('');
     }
   }, [webcamRef]);
+
+  const switchCamera = () => {
+    setFacingMode(prevMode => prevMode === 'user' ? 'environment' : 'user');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -84,8 +105,17 @@ const OcrUploadPage = () => {
             ref={webcamRef}
             screenshotFormat="image/jpeg"
             width="100%"
+            videoConstraints={{
+              facingMode: facingMode
+            }}
+            style={{
+              transform: facingMode === 'user' ? 'scaleX(-1)' : 'none'
+            }}
           />
-          <button onClick={capture}>Capture photo</button>
+          <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+            <button onClick={capture} style={{ flex: 1 }}>📸 Capturar Foto</button>
+            <button onClick={switchCamera} style={{ flex: 1 }}>🔄 Trocar Câmera</button>
+          </div>
         </div>
       )}
 
