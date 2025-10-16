@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run seed:admin:*)",
+      "Bash(node -e:*)",
+      "Bash(node scripts/quickAdmin.js:*)",
+      "Bash(mongosh:*)",
+      "Bash(docker ps:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

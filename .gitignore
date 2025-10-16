@@ -1,0 +1,105 @@
+# Dependencies
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+*.env
+
+# Build outputs
+dist/
+build/
+client/dist/
+server/dist/
+
+# Logs
+logs/
+*.log
+*.log.*
+server/logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Cache
+.cache/
+.parcel-cache/
+.npm/
+.eslintcache
+
+# MongoDB data (if running locally)
+data/
+mongodb_data/
+
+# Docker volumes
+mongodb_data/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Python (for ML API)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+ml_api/venv/
+ml_api/__pycache__/
+ml_api/.pytest_cache/
+
+# ML Models
+*.pkl
+*.h5
+*.pb
+ml_api/models/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# System files
+*.pid
+*.seed
+*.pid.lock
+
+# Upload directories (can contain sensitive data)
+uploads/
+server/uploads/
+
+# Backup files
+*.bak
+*.backup
+
+# Security
+*.pem
+*.key
+*.crt
+credentials.json
+serviceAccountKey.json

@@ -1,0 +1,148 @@
+.market-ticker {
+  background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+  border-top: 2px solid #4a5568;
+  border-bottom: 2px solid #4a5568;
+  padding: 0.75rem 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.market-ticker.loading,
+.market-ticker.error {
+  text-align: center;
+  padding: 0.75rem 1rem;
+}
+
+.market-ticker.error {
+  background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+}
+
+.ticker-scroll {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ticker-content {
+  display: inline-flex;
+  animation: scroll 40s linear infinite;
+  gap: 2rem;
+  padding: 0 1rem;
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background-color: rgba(26, 32, 44, 0.6);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.ticker-item:hover {
+  background-color: rgba(66, 153, 225, 0.15);
+  border-color: #4299e1;
+  transform: scale(1.05);
+  animation-play-state: paused;
+}
+
+.ticker-symbol {
+  font-weight: 700;
+  color: #e2e8f0;
+  text-transform: uppercase;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+}
+
+.ticker-price {
+  font-weight: 600;
+  color: #ffffff;
+  font-size: 1rem;
+}
+
+.ticker-change {
+  font-weight: 600;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.ticker-item.positive .ticker-change {
+  color: #48bb78;
+}
+
+.ticker-item.negative .ticker-change {
+  color: #f56565;
+}
+
+.ticker-item.positive {
+  border-left: 3px solid #48bb78;
+}
+
+.ticker-item.negative {
+  border-left: 3px solid #f56565;
+}
+
+/* Pause animation on hover */
+.ticker-content:hover {
+  animation-play-state: paused;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .market-ticker {
+    padding: 0.5rem 0;
+  }
+
+  .ticker-item {
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .ticker-symbol {
+    font-size: 0.85rem;
+  }
+
+  .ticker-price {
+    font-size: 0.9rem;
+  }
+
+  .ticker-change {
+    font-size: 0.75rem;
+  }
+
+  .ticker-content {
+    gap: 1rem;
+    animation-duration: 30s;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .ticker-content {
+    animation: none;
+  }
+
+  .ticker-scroll {
+    overflow-x: auto;
+  }
+
+  .ticker-content {
+    display: flex;
+    width: auto;
+  }
+}

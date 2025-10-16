@@ -1,0 +1,74 @@
+services:
+  # MongoDB Database
+  - type: pserv
+    name: savemymoney-mongodb
+    env: docker
+    dockerfilePath: ./Dockerfile.mongodb
+    plan: starter
+    disk:
+      name: mongodb-data
+      mountPath: /data/db
+      sizeGB: 1
+
+  # Backend API
+  - type: web
+    name: savemymoney-backend
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGO_URI
+        fromDatabase:
+          name: savemymoney-mongodb
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SENTRY_DSN
+        value: ""
+    healthCheckPath: /api/health
+
+  # Frontend (Static Site)
+  - type: web
+    name: savemymoney-frontend
+    env: static
+    region: oregon
+    plan: free
+    buildCommand: cd client && npm install && npm run build
+    staticPublishPath: ./client/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: savemymoney-backend
+          envVarKey: RENDER_EXTERNAL_URL
+
+  # ML API (Python FastAPI)
+  - type: web
+    name: savemymoney-ml-api
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: cd ml_api && pip install -r requirements.txt
+    startCommand: cd ml_api && uvicorn app:app --host 0.0.0.0 --port 5001
+    envVars:
+      - key: PORT
+        value: 5001
+    healthCheckPath: /health
+
+databases:
+  # Option: Use Render's managed MongoDB (Paid)
+  # Uncomment if you want to use Render's MongoDB instead of self-hosted
+  # - name: savemymoney-db
+  #   databaseName: savemymoney
+  #   user: admin
+  #   plan: starter

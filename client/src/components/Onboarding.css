@@ -1,0 +1,274 @@
+.onboarding-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.onboarding-modal {
+  background: white;
+  border-radius: 20px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.4s ease-out;
+}
+
+.dark .onboarding-modal {
+  background: var(--card-bg);
+  color: var(--text-primary);
+}
+
+.onboarding-progress {
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 20px 20px 0 0;
+}
+
+.dark .onboarding-progress {
+  background: var(--bg-tertiary);
+}
+
+.onboarding-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  border-radius: 20px 20px 0 0;
+  transition: width 0.3s ease;
+}
+
+.onboarding-content {
+  padding: 40px;
+  text-align: center;
+}
+
+.onboarding-icon {
+  font-size: 80px;
+  margin-bottom: 20px;
+  animation: bounce 0.6s ease-in-out;
+}
+
+.onboarding-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #1a202c;
+}
+
+.dark .onboarding-title {
+  color: var(--text-primary);
+}
+
+.onboarding-description {
+  font-size: 16px;
+  color: #4a5568;
+  margin-bottom: 30px;
+  line-height: 1.6;
+}
+
+.dark .onboarding-description {
+  color: var(--text-secondary);
+}
+
+.onboarding-features {
+  list-style: none;
+  padding: 0;
+  text-align: left;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.onboarding-features li {
+  padding: 12px 0;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #2d3748;
+}
+
+.dark .onboarding-features li {
+  color: var(--text-secondary);
+}
+
+.feature-checkmark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #48bb78;
+  color: white;
+  border-radius: 50%;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.onboarding-navigation {
+  padding: 20px 40px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.onboarding-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #cbd5e0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.dark .dot {
+  background: var(--border-color);
+}
+
+.dot.active {
+  width: 24px;
+  border-radius: 4px;
+  background: #6366f1;
+}
+
+.dot:hover {
+  background: #a0aec0;
+}
+
+.onboarding-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.onboarding-btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.onboarding-btn-primary {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+}
+
+.onboarding-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.onboarding-btn-secondary {
+  background: #e2e8f0;
+  color: #2d3748;
+}
+
+.dark .onboarding-btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.onboarding-btn-secondary:hover {
+  background: #cbd5e0;
+}
+
+.dark .onboarding-btn-secondary:hover {
+  background: var(--border-color);
+}
+
+.onboarding-btn-skip {
+  background: transparent;
+  color: #718096;
+  padding: 8px 16px;
+  font-size: 14px;
+  align-self: flex-start;
+}
+
+.onboarding-btn-skip:hover {
+  color: #4a5568;
+}
+
+.dark .onboarding-btn-skip {
+  color: var(--text-tertiary);
+}
+
+.dark .onboarding-btn-skip:hover {
+  color: var(--text-secondary);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .onboarding-modal {
+    width: 95%;
+  }
+
+  .onboarding-content {
+    padding: 30px 20px;
+  }
+
+  .onboarding-navigation {
+    padding: 15px 20px 30px;
+  }
+
+  .onboarding-icon {
+    font-size: 60px;
+  }
+
+  .onboarding-title {
+    font-size: 24px;
+  }
+
+  .onboarding-buttons {
+    flex-direction: column;
+  }
+
+  .onboarding-btn {
+    width: 100%;
+  }
+}
