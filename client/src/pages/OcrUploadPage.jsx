@@ -63,7 +63,7 @@ const OcrUploadPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!file) {
-      setMessage('Please select a file or capture a photo.');
+      setMessage('Por favor, selecione um arquivo ou tire uma foto.');
       return;
     }
 
@@ -71,16 +71,25 @@ const OcrUploadPage = () => {
     formData.append('receipt', file);
 
     setLoading(true);
-    setMessage('');
+    setMessage('Processando cupom fiscal...');
     setExtractedTransactions([]);
 
     try {
       const { data } = await uploadReceipt(formData);
       setExtractedTransactions(data);
-      setMessage(`${data.length} transaction(s) extracted successfully!`);
+      setMessage(`✅ ${data.length} item(ns) extraído(s) com sucesso!`);
+
+      // Limpar imagem e arquivo após extração bem-sucedida
+      setImageSrc(null);
+      setFile(null);
+
+      // Scroll para ver os resultados
+      setTimeout(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }, 100);
     } catch (error) {
-      const errMsg = error.response?.data?.msg || 'An error occurred during OCR processing.';
-      setMessage(`Error: ${errMsg}`);
+      const errMsg = error.response?.data?.msg || 'Ocorreu um erro durante o processamento do OCR.';
+      setMessage(`❌ Erro: ${errMsg}`);
     } finally {
       setLoading(false);
     }
@@ -88,14 +97,17 @@ const OcrUploadPage = () => {
 
   return (
     <div style={{ maxWidth: '600px', margin: '2rem auto', padding: '1rem', border: '1px solid #ccc', borderRadius: '8px' }}>
-      <h2>Upload Receipt for OCR</h2>
-      <p>Upload an image of a receipt or use your camera to take a picture.</p>
-      
+      <h2>📸 Scanner de Cupom Fiscal</h2>
+      <p>Tire uma foto do cupom fiscal ou faça upload de uma imagem. Os itens serão extraídos automaticamente.</p>
+
       <div style={{ marginBottom: '1rem' }}>
-        <button onClick={() => setShowCamera(!showCamera)} style={{ marginRight: '1rem' }}>
-          {showCamera ? 'Close Camera' : 'Open Camera'}
+        <button onClick={() => setShowCamera(!showCamera)} style={{ marginRight: '1rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>
+          {showCamera ? '❌ Fechar Câmera' : '📷 Abrir Câmera'}
         </button>
-        <input type="file" accept="image/*" onChange={handleFileChange} />
+        <input type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} id="file-upload" />
+        <label htmlFor="file-upload" style={{ padding: '0.5rem 1rem', cursor: 'pointer', border: '1px solid #ccc', borderRadius: '4px', display: 'inline-block' }}>
+          📁 Escolher Arquivo
+        </label>
       </div>
 
       {showCamera && (
@@ -124,28 +136,65 @@ const OcrUploadPage = () => {
       )}
 
       {imageSrc && (
-        <div style={{ marginBottom: '1rem' }}>
-          <h4>Preview:</h4>
-          <img src={imageSrc} alt="Receipt preview" style={{ width: '100%', borderRadius: '4px' }} />
+        <div style={{ marginBottom: '1rem', background: '#f9f9f9', padding: '1rem', borderRadius: '8px' }}>
+          <h4>📋 Preview do Cupom:</h4>
+          <img src={imageSrc} alt="Receipt preview" style={{ width: '100%', borderRadius: '4px', border: '2px solid #ddd' }} />
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
-        <button type="submit" disabled={loading || !file}>
-          {loading ? 'Processing...' : 'Extract Transactions'}
+        <button
+          type="submit"
+          disabled={loading || !file}
+          style={{
+            width: '100%',
+            padding: '0.75rem',
+            fontSize: '1rem',
+            cursor: loading || !file ? 'not-allowed' : 'pointer',
+            background: loading || !file ? '#ccc' : '#4CAF50',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            fontWeight: 'bold'
+          }}
+        >
+          {loading ? '⏳ Processando...' : '🔍 Extrair Itens do Cupom'}
         </button>
       </form>
 
-      {message && <p style={{ marginTop: '1rem', color: message.startsWith('Error') ? 'red' : 'green' }}>{message}</p>}
+      {message && (
+        <p style={{
+          marginTop: '1rem',
+          padding: '0.75rem',
+          borderRadius: '4px',
+          background: message.includes('❌') ? '#ffebee' : '#e8f5e9',
+          color: message.includes('❌') ? '#c62828' : '#2e7d32',
+          fontWeight: 'bold'
+        }}>
+          {message}
+        </p>
+      )}
 
       {extractedTransactions.length > 0 && (
-        <div style={{ marginTop: '2rem' }}>
-          <h4>Extracted Transactions:</h4>
+        <div style={{ marginTop: '2rem', background: '#f0f7ff', padding: '1rem', borderRadius: '8px' }}>
+          <h4>✅ Itens Extraídos ({extractedTransactions.length}):</h4>
+          <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>
+            ℹ️ A imagem foi removida. Revise os itens abaixo:
+          </p>
           <ul style={{ listStyleType: 'none', padding: 0 }}>
             {extractedTransactions.map((t, index) => (
-              <li key={index} style={{ background: '#f4f4f4', margin: '0.5rem 0', padding: '0.5rem', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
-                <span>{t.description}</span>
-                <span>R$ {t.amount.toFixed(2)}</span>
+              <li key={index} style={{
+                background: 'white',
+                margin: '0.5rem 0',
+                padding: '0.75rem',
+                borderRadius: '4px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                border: '1px solid #e0e0e0',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+              }}>
+                <span style={{ fontWeight: '500' }}>{t.description}</span>
+                <span style={{ color: '#2e7d32', fontWeight: 'bold' }}>R$ {t.amount.toFixed(2)}</span>
               </li>
             ))}
           </ul>
