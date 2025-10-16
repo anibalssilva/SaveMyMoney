@@ -1,6 +1,35 @@
 # SaveMyMoney 💰
 
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/seu-usuario/SaveMyMoney)
+[![Node.js](https://img.shields.io/badge/Node.js-20.x-green.svg)](https://nodejs.org/)
+[![React](https://img.shields.io/badge/React-18.3-blue.svg)](https://reactjs.org/)
+[![Python](https://img.shields.io/badge/Python-3.9+-yellow.svg)](https://www.python.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-8.x-green.svg)](https://www.mongodb.com/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **Aplicação completa de gestão financeira pessoal com recursos avançados de IA, alertas inteligentes, sugestões de investimentos e cotações em tempo real.**
+
+---
+
+## 🚀 Deploy Rápido
+
+> **Quer testar sem instalar localmente?**
+>
+> Siga o guia completo de deploy no Render (gratuito):
+>
+> 📘 **[DEPLOY_RENDER.md](./DEPLOY_RENDER.md)** - Deploy em 30 minutos
+>
+> Ou consulte os comandos rápidos:
+>
+> ⚡ **[COMANDOS_RAPIDOS.md](./COMANDOS_RAPIDOS.md)** - Copiar e colar
+
+**Stack de Deploy:**
+- **Frontend:** Render Static Site (Free)
+- **Backend:** Render Web Service (Free)
+- **Database:** MongoDB Atlas (Free M0)
+- **ML API:** Render Web Service (Free) - Opcional
+
+---
 
 ## 📋 Índice
 
