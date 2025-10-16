@@ -106,8 +106,12 @@ const OcrUploadPage = () => {
             screenshotFormat="image/jpeg"
             width="100%"
             videoConstraints={{
-              facingMode: facingMode
+              facingMode: facingMode,
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+              aspectRatio: { ideal: 16/9 }
             }}
+            screenshotQuality={1}
             style={{
               transform: facingMode === 'user' ? 'scaleX(-1)' : 'none'
             }}
