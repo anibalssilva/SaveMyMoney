@@ -1,5 +1,6 @@
 import React, { useState, lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { ThemeProvider } from './contexts/ThemeContext';
 import Navbar from './components/Navbar';
 import MarketTicker from './components/MarketTicker';
 import Footer from './components/Footer';
@@ -47,35 +48,37 @@ function App() {
   };
 
   return (
-    <div className="app-wrapper">
-      <Navbar />
-      <main className="container">
-        <Alert message={alert} onClose={handleCloseAlert} />
-        <Suspense fallback={<LoadingFallback />}>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+    <ThemeProvider>
+      <div className="app-wrapper">
+        <Navbar />
+        <main className="container">
+          <Alert message={alert} onClose={handleCloseAlert} />
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
 
-            {/* Private Routes */}
-            <Route element={<PrivateRoute />}>
-              <Route path="/dashboard" element={<DashboardPage setAlert={handleSetAlert} />} />
-              <Route path="/transactions" element={<TransactionsPage setAlert={handleSetAlert} />} />
-              <Route path="/ocr" element={<OcrUploadPage setAlert={handleSetAlert} />} />
-              <Route path="/upload-statement" element={<PdfUploadPage setAlert={handleSetAlert} />} />
-              <Route path="/budgets" element={<BudgetAlertsPage />} />
-              <Route path="/alerts" element={<BudgetAlertsPage />} />
-              <Route path="/predictions" element={<PredictionsPage />} />
-              <Route path="/investments" element={<InvestmentsPage />} />
-              <Route path="/portfolio" element={<PortfolioPage />} />
-            </Route>
-          </Routes>
-        </Suspense>
-      </main>
-      <MarketTicker refreshInterval={60000} />
-      <Footer />
-    </div>
+              {/* Private Routes */}
+              <Route element={<PrivateRoute />}>
+                <Route path="/dashboard" element={<DashboardPage setAlert={handleSetAlert} />} />
+                <Route path="/transactions" element={<TransactionsPage setAlert={handleSetAlert} />} />
+                <Route path="/ocr" element={<OcrUploadPage setAlert={handleSetAlert} />} />
+                <Route path="/upload-statement" element={<PdfUploadPage setAlert={handleSetAlert} />} />
+                <Route path="/budgets" element={<BudgetAlertsPage />} />
+                <Route path="/alerts" element={<BudgetAlertsPage />} />
+                <Route path="/predictions" element={<PredictionsPage />} />
+                <Route path="/investments" element={<InvestmentsPage />} />
+                <Route path="/portfolio" element={<PortfolioPage />} />
+              </Route>
+            </Routes>
+          </Suspense>
+        </main>
+        <MarketTicker refreshInterval={60000} />
+        <Footer />
+      </div>
+    </ThemeProvider>
   );
 }
 

@@ -1,60 +1,168 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import ThemeToggle from './ThemeToggle';
+import './Navbar.css';
 
 const Navbar = () => {
   const navigate = useNavigate();
-  // A simple check for token existence. In a real app, you might want a more robust check (e.g., context).
+  const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const token = localStorage.getItem('token');
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/login');
-    // Force a re-render or use state management to update the navbar instantly.
-    window.location.reload(); 
+    window.location.reload();
+  };
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+  };
+
+  const isActive = (path) => {
+    return location.pathname === path ? 'active' : '';
   };
 
   return (
-    <nav className="navbar">
-      <Link to="/"><h1>SaveMyMoney</h1></Link>
-      <ul className="nav-links">
+    <nav className="modern-navbar">
+      <div className="navbar-container">
+        {/* Logo */}
+        <Link to="/" className="navbar-logo-section" onClick={closeMobileMenu}>
+          <span className="navbar-logo-icon">💰</span>
+          <span className="navbar-logo-text">SaveMyMoney</span>
+        </Link>
+
+        {/* Desktop Navigation */}
         {token ? (
           <>
-            <li>
-              <Link to="/dashboard" className="nav-link">Dashboard</Link>
-            </li>
-            <li>
-              <Link to="/transactions" className="nav-link">Transactions</Link>
-            </li>
-            <li>
-              <Link to="/ocr" className="nav-link">Upload Receipt</Link>
-            </li>
-            <li>
-              <Link to="/upload-statement" className="nav-link">Upload Statement</Link>
-            </li>
-            <li>
-              <Link to="/budgets" className="nav-link">Budgets</Link>
-            </li>
-            <li>
-              <Link to="/alerts" className="nav-link">Alerts</Link>
-            </li>
-            <li>
-              <Link to="/portfolio" className="nav-link">Portfolio</Link>
-            </li>
-            <li>
-              <button onClick={handleLogout} className="btn btn-logout">Logout</button>
-            </li>
+            <ul className="navbar-nav">
+              <li className="navbar-nav-item">
+                <Link to="/dashboard" className={`navbar-nav-link ${isActive('/dashboard')}`}>
+                  📊 Dashboard
+                </Link>
+              </li>
+              <li className="navbar-nav-item">
+                <Link to="/transactions" className={`navbar-nav-link ${isActive('/transactions')}`}>
+                  💸 Transações
+                </Link>
+              </li>
+              <li className="navbar-nav-item">
+                <Link to="/ocr" className={`navbar-nav-link ${isActive('/ocr')}`}>
+                  📸 Scanner
+                </Link>
+              </li>
+              <li className="navbar-nav-item">
+                <Link to="/portfolio" className={`navbar-nav-link ${isActive('/portfolio')}`}>
+                  📈 Portfólio
+                </Link>
+              </li>
+              <li className="navbar-nav-item">
+                <Link to="/predictions" className={`navbar-nav-link ${isActive('/predictions')}`}>
+                  🔮 Previsões
+                </Link>
+              </li>
+              <li className="navbar-nav-item">
+                <Link to="/investments" className={`navbar-nav-link ${isActive('/investments')}`}>
+                  💼 Investimentos
+                </Link>
+              </li>
+            </ul>
+
+            <div className="navbar-actions">
+              <ThemeToggle />
+              <button onClick={handleLogout} className="navbar-btn navbar-btn-logout">
+                🚪 Sair
+              </button>
+            </div>
           </>
         ) : (
           <>
-            <li>
-              <Link to="/login" className="nav-link">Login</Link>
-            </li>
-            <li>
-              <Link to="/register" className="btn btn-primary">Register</Link>
-            </li>
+            <ul className="navbar-nav">
+              {/* Empty for unauthenticated users */}
+            </ul>
+
+            <div className="navbar-actions">
+              <ThemeToggle />
+              <Link to="/login" className="navbar-btn">
+                🔐 Entrar
+              </Link>
+              <Link to="/register" className="navbar-btn navbar-btn-primary">
+                ✨ Cadastrar
+              </Link>
+            </div>
           </>
         )}
-      </ul>
+
+        {/* Mobile Menu Toggle */}
+        <button
+          className="navbar-mobile-toggle"
+          onClick={toggleMobileMenu}
+          aria-label="Toggle mobile menu"
+        >
+          {mobileMenuOpen ? '✕' : '☰'}
+        </button>
+      </div>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="navbar-mobile-menu open">
+          {token ? (
+            <>
+              <ul className="navbar-mobile-nav">
+                <li>
+                  <Link to="/dashboard" className="navbar-nav-link" onClick={closeMobileMenu}>
+                    📊 Dashboard
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/transactions" className="navbar-nav-link" onClick={closeMobileMenu}>
+                    💸 Transações
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/ocr" className="navbar-nav-link" onClick={closeMobileMenu}>
+                    📸 Scanner
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/portfolio" className="navbar-nav-link" onClick={closeMobileMenu}>
+                    📈 Portfólio
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/predictions" className="navbar-nav-link" onClick={closeMobileMenu}>
+                    🔮 Previsões
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/investments" className="navbar-nav-link" onClick={closeMobileMenu}>
+                    💼 Investimentos
+                  </Link>
+                </li>
+              </ul>
+
+              <div className="navbar-mobile-actions">
+                <button onClick={handleLogout} className="navbar-btn navbar-btn-logout">
+                  🚪 Sair
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="navbar-mobile-actions">
+              <Link to="/login" className="navbar-btn" onClick={closeMobileMenu}>
+                🔐 Entrar
+              </Link>
+              <Link to="/register" className="navbar-btn navbar-btn-primary" onClick={closeMobileMenu}>
+                ✨ Cadastrar
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
     </nav>
   );
 };

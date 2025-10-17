@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { login } from '../services/api';
+import './LoginPage.css';
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const { email, password } = formData;
@@ -15,6 +17,8 @@ const LoginPage = () => {
   const onSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
+
     try {
       const res = await login({ email, password });
       localStorage.setItem('token', res.data.token);
@@ -30,40 +34,80 @@ const LoginPage = () => {
         || 'Email ou senha incorretos. Verifique suas credenciais.';
 
       setError(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="form-container">
-      <h1>Login</h1>
-      <p>Get back to managing your money.</p>
-      {error && <p className="error-message">{error}</p>}
-      <form onSubmit={onSubmit}>
-        <div className="form-group">
-          <input
-            type="email"
-            name="email"
-            value={email}
-            onChange={onChange}
-            placeholder="Email Address"
-            required
-          />
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-header">
+          <div className="login-logo">💰</div>
+          <h1 className="login-title">SaveMyMoney</h1>
+          <p className="login-subtitle">Entre para gerenciar suas finanças</p>
         </div>
-        <div className="form-group">
-          <input
-            type="password"
-            name="password"
-            value={password}
-            onChange={onChange}
-            placeholder="Password"
-            required
-          />
+
+        {error && (
+          <div className="login-error">
+            🚫 {error}
+          </div>
+        )}
+
+        <form onSubmit={onSubmit} className="login-form">
+          <div className="login-input-group">
+            <input
+              type="email"
+              name="email"
+              value={email}
+              onChange={onChange}
+              placeholder="Digite seu email"
+              className="login-input"
+              required
+              autoComplete="email"
+            />
+            <span className="login-input-icon">📧</span>
+          </div>
+
+          <div className="login-input-group">
+            <input
+              type="password"
+              name="password"
+              value={password}
+              onChange={onChange}
+              placeholder="Digite sua senha"
+              className="login-input"
+              required
+              autoComplete="current-password"
+            />
+            <span className="login-input-icon">🔒</span>
+          </div>
+
+          <button
+            type="submit"
+            className="login-submit"
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="login-loading">
+                <span className="login-spinner"></span>
+                Entrando...
+              </span>
+            ) : (
+              <>
+                Entrar
+                <span style={{ marginLeft: '8px' }}>→</span>
+              </>
+            )}
+          </button>
+        </form>
+
+        <div className="login-footer">
+          <p className="login-link">
+            Não tem uma conta? <Link to="/register">Cadastre-se</Link>
+          </p>
         </div>
-        <button type="submit" className="btn btn-primary">Login</button>
-      </form>
-      <p className="form-link">
-        Don't have an account? <Link to="/register">Sign Up</Link>
-      </p>
+      </div>
     </div>
   );
 };

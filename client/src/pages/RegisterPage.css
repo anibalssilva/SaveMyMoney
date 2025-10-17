@@ -1,0 +1,400 @@
+/* ================================
+   REGISTER PAGE - FUTURISTIC DESIGN
+   ================================ */
+
+.register-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated Background Orbs - Different positions than Login */
+.register-container::before,
+.register-container::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.3;
+  animation: float 8s ease-in-out infinite;
+}
+
+.register-container::before {
+  width: 450px;
+  height: 450px;
+  background: var(--gradient-success);
+  top: 10%;
+  right: -150px;
+  animation-delay: 1s;
+}
+
+.register-container::after {
+  width: 380px;
+  height: 380px;
+  background: var(--gradient-cyber);
+  bottom: 10%;
+  left: -120px;
+  animation-delay: 4s;
+}
+
+/* Register Card */
+.register-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-backdrop);
+  -webkit-backdrop-filter: var(--glass-backdrop);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--glass-shadow);
+  padding: var(--space-3xl);
+  width: 100%;
+  max-width: 520px;
+  position: relative;
+  z-index: 1;
+  animation: fadeInUp var(--transition-smooth) ease-out;
+}
+
+.register-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--gradient-success);
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+}
+
+/* Header */
+.register-header {
+  text-align: center;
+  margin-bottom: var(--space-2xl);
+}
+
+.register-logo {
+  font-size: 3rem;
+  margin-bottom: var(--space-md);
+  animation: float 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 20px var(--cyber-success));
+}
+
+.register-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: var(--space-sm);
+  background: var(--gradient-success);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: fadeIn var(--transition-base) ease-out 200ms backwards;
+}
+
+.register-subtitle {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  animation: fadeIn var(--transition-base) ease-out 400ms backwards;
+}
+
+/* Form */
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.register-input-group {
+  position: relative;
+  animation: slideInLeft var(--transition-smooth) ease-out;
+}
+
+.register-input-group:nth-child(1) {
+  animation-delay: 300ms;
+}
+
+.register-input-group:nth-child(2) {
+  animation-delay: 400ms;
+}
+
+.register-input-group:nth-child(3) {
+  animation-delay: 500ms;
+}
+
+.register-input-group:nth-child(4) {
+  animation-delay: 600ms;
+}
+
+.register-input-icon {
+  position: absolute;
+  left: var(--space-lg);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.25rem;
+  color: var(--text-secondary);
+  pointer-events: none;
+  transition: all var(--transition-base);
+  z-index: 1;
+}
+
+.register-input {
+  width: 100%;
+  padding: var(--space-lg) var(--space-lg) var(--space-lg) 3.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border: 2px solid transparent;
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  font-size: 1rem;
+  transition: all var(--transition-base);
+  outline: none;
+}
+
+.register-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.register-input:focus {
+  border-color: var(--cyber-success);
+  background: rgba(0, 255, 136, 0.05);
+  box-shadow: 0 0 0 4px rgba(0, 255, 136, 0.1), var(--glow-success);
+}
+
+.register-input:focus + .register-input-icon {
+  color: var(--cyber-success);
+  transform: translateY(-50%) scale(1.1);
+}
+
+/* Password Strength Indicator */
+.password-strength {
+  margin-top: var(--space-sm);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.register-input:focus ~ .password-strength,
+.register-input:not(:placeholder-shown) ~ .password-strength {
+  opacity: 1;
+}
+
+.strength-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.strength-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: all var(--transition-base);
+  width: 0%;
+}
+
+.strength-weak .strength-fill {
+  width: 33%;
+  background: var(--cyber-error);
+}
+
+.strength-medium .strength-fill {
+  width: 66%;
+  background: var(--cyber-warning);
+}
+
+.strength-strong .strength-fill {
+  width: 100%;
+  background: var(--cyber-success);
+}
+
+.strength-text {
+  min-width: 60px;
+  font-weight: 600;
+}
+
+.strength-weak .strength-text {
+  color: var(--cyber-error);
+}
+
+.strength-medium .strength-text {
+  color: var(--cyber-warning);
+}
+
+.strength-strong .strength-text {
+  color: var(--cyber-success);
+}
+
+/* Error Message */
+.register-error {
+  background: rgba(255, 51, 102, 0.1);
+  border: 1px solid var(--cyber-error);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  color: var(--cyber-error);
+  text-align: center;
+  font-weight: 500;
+  animation: shake 0.5s ease-in-out;
+  margin-bottom: var(--space-md);
+}
+
+/* Submit Button */
+.register-submit {
+  width: 100%;
+  padding: var(--space-lg);
+  background: var(--gradient-success);
+  border: none;
+  border-radius: var(--radius-full);
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+  margin-top: var(--space-md);
+  animation: slideInRight var(--transition-smooth) ease-out 700ms backwards;
+  box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
+}
+
+.register-submit::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left var(--transition-slow);
+}
+
+.register-submit:hover::before {
+  left: 100%;
+}
+
+.register-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--glow-success);
+}
+
+.register-submit:active {
+  transform: translateY(0);
+}
+
+.register-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Loading State */
+.register-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.register-spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Footer Links */
+.register-footer {
+  text-align: center;
+  margin-top: var(--space-xl);
+  animation: fadeIn var(--transition-base) ease-out 800ms backwards;
+}
+
+.register-link {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.register-link a {
+  color: var(--cyber-success);
+  text-decoration: none;
+  font-weight: 600;
+  transition: all var(--transition-base);
+  position: relative;
+}
+
+.register-link a::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--gradient-success);
+  transition: width var(--transition-base);
+}
+
+.register-link a:hover::after {
+  width: 100%;
+}
+
+.register-link a:hover {
+  color: var(--cyber-success);
+  text-shadow: 0 0 10px var(--cyber-success);
+}
+
+/* Success Message (if needed) */
+.register-success {
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid var(--cyber-success);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  color: var(--cyber-success);
+  text-align: center;
+  font-weight: 500;
+  animation: fadeIn 0.5s ease-in-out;
+  margin-bottom: var(--space-md);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .register-card {
+    padding: var(--space-2xl) var(--space-xl);
+  }
+
+  .register-title {
+    font-size: 1.75rem;
+  }
+
+  .register-logo {
+    font-size: 2.5rem;
+  }
+
+  .register-container::before,
+  .register-container::after {
+    display: none;
+  }
+}
+
+/* Dark Mode Adjustments */
+body.dark .register-input {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+body.dark .register-input:focus {
+  background: rgba(0, 255, 136, 0.08);
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .register-container::before,
+  .register-container::after,
+  .register-logo {
+    animation: none;
+  }
+}
