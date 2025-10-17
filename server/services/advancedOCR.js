@@ -164,52 +164,46 @@ async function extractWithOpenAI(imageBuffer) {
           content: [
             {
               type: 'text',
-              text: `Você é um especialista em extração COMPLETA de dados de cupons fiscais brasileiros.
+              text: `
+              Sua tarefa é ANALISAR a imagem de um cupom fiscal e retornar um JSON completo e padronizado, conforme o formato abaixo.
 
-INSTRUÇÕES:
-Analise a imagem do cupom fiscal e extraia:
+              ⚙️ REGRAS DE EXTRAÇÃO:
+              1. Extraia **todos os produtos** com nome completo, quantidade e valor unitário.
+              2. Inclua também o **valor total pago**, o **CNPJ** do estabelecimento, **nome da loja**, **data e hora** da compra, e **forma de pagamento**.
+              3. Identifique automaticamente o tipo de pagamento com base em palavras como:
+                - “CREDITO”, “CARTÃO DE CRÉDITO” → `"type": "credit"`
+                - “DÉBITO”, “CARTÃO DE DÉBITO” → `"type": "debit"`
+                - “DINHEIRO” → `"type": "cash"`
+                - “PIX” → `"type": "pix"`
+                - “CARTEIRA DIGITAL”, “VALE”, “OUTRO” → `"type": "other"`
+              4. Use **valores numéricos com duas casas decimais**.
+              5. Se um dado não estiver presente, retorne `null`.
+              6. Converta a data para o formato `DD/MM/YYYY`.
+              7. Todos os valores devem estar em reais (R$), sem o símbolo.
 
-1. PRODUTOS: Todos os itens comprados com valores INDIVIDUAIS
-2. ESTABELECIMENTO: Nome da loja/empresa
-3. CNPJ: Número do CNPJ
-4. DATA: Data da compra (formato DD/MM/YYYY)
-5. HORA: Hora da compra (se disponível)
-6. TOTAL PAGO: Valor total da compra
-7. FORMA DE PAGAMENTO: Identifique se foi:
-   - Cartão de Crédito
-   - Cartão de Débito
-   - Dinheiro
-   - PIX
-   - Outro
+              ---
 
-FORMATO DE RESPOSTA (JSON):
-{
-  "items": [
-    {"description": "Nome do produto exato", "amount": 12.50, "quantity": 1}
-  ],
-  "metadata": {
-    "establishment": "Nome da loja",
-    "cnpj": "00.000.000/0000-00",
-    "date": "DD/MM/YYYY",
-    "time": "HH:MM:SS",
-    "total": 49.90,
-    "paymentMethod": {
-      "type": "credit|debit|cash|pix|other",
-      "details": "Cartão de Crédito"
-    }
-  },
-  "confidence": "high|medium|low",
-  "notes": "Observações"
-}
+              📦 **FORMATO JSON DE SAÍDA:**
 
-REGRAS IMPORTANTES:
-- Extraia APENAS itens comprados (ignore totais, impostos, descontos)
-- Use valores com 2 casas decimais (12.50 não 12.5)
-- Se não encontrar algum dado, use null
-- CNPJ: tente encontrar no cabeçalho do cupom
-- Data: procure próximo ao final do cupom
-- Pagamento: busque por palavras como "CREDITO", "DEBITO", "DINHEIRO", "PAGAMENTO"
-- Se imagem ilegível, retorne confidence: "low"`
+              {
+                "items": [
+                  {"description": "Nome do produto exato", "amount": 12.50, "quantity": 1}
+                ],
+                "metadata": {
+                  "establishment": "Nome do estabelecimento",
+                  "cnpj": "00.000.000/0000-00",
+                  "date": "DD/MM/YYYY",
+                  "time": "HH:MM:SS",
+                  "total": 0.00,
+                  "paymentMethod": {
+                    "type": "credit|debit|cash|pix|other",
+                    "details": "Texto original da forma de pagamento"
+                  }
+                },
+                "confidence": "high|medium|low",
+                "notes": "Observações relevantes, como vendedor, série, ou número do SAT/NFC-e."
+              }
+              `
             },
             {
               type: 'image_url',
