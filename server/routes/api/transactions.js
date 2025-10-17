@@ -152,21 +152,34 @@ router.put('/:id', auth, async (req, res) => {
 // @access  Private
 router.delete('/:id', auth, async (req, res) => {
   try {
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ msg: 'ID de transação inválido' });
+    }
+
     let transaction = await Transaction.findById(req.params.id);
 
-    if (!transaction) return res.status(404).json({ msg: 'Transaction not found' });
+    if (!transaction) {
+      return res.status(404).json({ msg: 'Transação não encontrada' });
+    }
 
     // Make sure user owns transaction
     if (transaction.user.toString() !== req.user.id) {
-      return res.status(401).json({ msg: 'Not authorized' });
+      return res.status(401).json({ msg: 'Não autorizado a excluir esta transação' });
     }
 
-    await Transaction.findByIdAndRemove(req.params.id);
+    // Use findByIdAndDelete instead of deprecated findByIdAndRemove
+    await Transaction.findByIdAndDelete(req.params.id);
 
-    res.json({ msg: 'Transaction removed' });
+    console.log(`✅ Transaction ${req.params.id} deleted successfully by user ${req.user.id}`);
+
+    res.json({ msg: 'Transação removida com sucesso', id: req.params.id });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('❌ Delete transaction error:', err.message);
+    res.status(500).json({
+      msg: 'Erro ao excluir transação',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 });
 

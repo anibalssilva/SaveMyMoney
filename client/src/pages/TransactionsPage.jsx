@@ -184,7 +184,7 @@ const TransactionsPage = ({ setAlert }) => {
     if (!transactionToDelete) return;
 
     try {
-      await deleteTransaction(transactionToDelete._id);
+      const response = await deleteTransaction(transactionToDelete._id);
       setToast({
         message: '🗑️ Transação excluída com sucesso!',
         type: 'success',
@@ -192,10 +192,12 @@ const TransactionsPage = ({ setAlert }) => {
       });
       loadTransactions();
     } catch (error) {
+      console.error('Delete error:', error);
+      const errorMessage = error.response?.data?.msg || error.message || 'Erro ao excluir transação';
       setToast({
-        message: '❌ Erro ao excluir transação',
+        message: `❌ ${errorMessage}`,
         type: 'error',
-        duration: 4000
+        duration: 5000
       });
     } finally {
       setShowDeleteModal(false);
