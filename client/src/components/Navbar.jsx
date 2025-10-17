@@ -46,6 +46,11 @@ const Navbar = () => {
                 </Link>
               </li>
               <li className="navbar-nav-item">
+                <Link to="/financial-dashboard" className={`navbar-nav-link ${isActive('/financial-dashboard')}`}>
+                  📈 Gráficos
+                </Link>
+              </li>
+              <li className="navbar-nav-item">
                 <Link to="/transactions" className={`navbar-nav-link ${isActive('/transactions')}`}>
                   💸 Transações
                 </Link>
@@ -57,7 +62,7 @@ const Navbar = () => {
               </li>
               <li className="navbar-nav-item">
                 <Link to="/portfolio" className={`navbar-nav-link ${isActive('/portfolio')}`}>
-                  📈 Portfólio
+                  💼 Portfólio
                 </Link>
               </li>
               <li className="navbar-nav-item">
@@ -67,7 +72,7 @@ const Navbar = () => {
               </li>
               <li className="navbar-nav-item">
                 <Link to="/investments" className={`navbar-nav-link ${isActive('/investments')}`}>
-                  💼 Investimentos
+                  💎 Investimentos
                 </Link>
               </li>
             </ul>
@@ -119,6 +124,11 @@ const Navbar = () => {
                   </Link>
                 </li>
                 <li>
+                  <Link to="/financial-dashboard" className="navbar-nav-link" onClick={closeMobileMenu}>
+                    📈 Gráficos
+                  </Link>
+                </li>
+                <li>
                   <Link to="/transactions" className="navbar-nav-link" onClick={closeMobileMenu}>
                     💸 Transações
                   </Link>
@@ -130,7 +140,7 @@ const Navbar = () => {
                 </li>
                 <li>
                   <Link to="/portfolio" className="navbar-nav-link" onClick={closeMobileMenu}>
-                    📈 Portfólio
+                    💼 Portfólio
                   </Link>
                 </li>
                 <li>
@@ -140,7 +150,7 @@ const Navbar = () => {
                 </li>
                 <li>
                   <Link to="/investments" className="navbar-nav-link" onClick={closeMobileMenu}>
-                    💼 Investimentos
+                    💎 Investimentos
                   </Link>
                 </li>
               </ul>

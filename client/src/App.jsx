@@ -14,6 +14,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const TransactionsPage = lazy(() => import('./pages/TransactionsPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const FinancialDashboardPage = lazy(() => import('./pages/FinancialDashboardPage'));
 const OcrUploadPage = lazy(() => import('./pages/OcrUploadPage'));
 const PdfUploadPage = lazy(() => import('./pages/PdfUploadPage'));
 const BudgetsPage = lazy(() => import('./pages/BudgetsPage'));
@@ -63,6 +64,7 @@ function App() {
               {/* Private Routes */}
               <Route element={<PrivateRoute />}>
                 <Route path="/dashboard" element={<DashboardPage setAlert={handleSetAlert} />} />
+                <Route path="/financial-dashboard" element={<FinancialDashboardPage />} />
                 <Route path="/transactions" element={<TransactionsPage setAlert={handleSetAlert} />} />
                 <Route path="/ocr" element={<OcrUploadPage setAlert={handleSetAlert} />} />
                 <Route path="/upload-statement" element={<PdfUploadPage setAlert={handleSetAlert} />} />
