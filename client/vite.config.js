@@ -12,4 +12,20 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'chart-vendor': ['chart.js', 'react-chartjs-2'],
+        },
+      },
+    },
+    commonjsOptions: {
+      include: [/chart\.js/, /node_modules/],
+      transformMixedEsModules: true,
+    },
+  },
+  optimizeDeps: {
+    include: ['chart.js', 'react-chartjs-2'],
+  },
 })
