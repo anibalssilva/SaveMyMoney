@@ -1,42 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
-import BudgetAlert from '../components/BudgetAlert';
 import Toast from '../components/Toast';
 import './DashboardPage.css';
 
 const DashboardPage = () => {
-  const [alerts, setAlerts] = useState([]);
-  const [stats, setStats] = useState([]);
-  const [toast, setToast] = useState(null);
+  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+
+  // Filtros
+  const [selectedType, setSelectedType] = useState('all'); // all, expense, income
+  const [selectedMonth, setSelectedMonth] = useState('all'); // all, 2025-01, etc
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [groupBy, setGroupBy] = useState('category'); // category, date, type
 
   useEffect(() => {
-    fetchData();
+    fetchTransactions();
   }, []);
 
-  const fetchData = async () => {
+  const fetchTransactions = async () => {
     setLoading(true);
     try {
-      const [alertsRes, statsRes] = await Promise.all([
-        api.get('/budgets/alerts'),
-        api.get('/budgets/stats')
-      ]);
-      setAlerts(alertsRes.data);
-      setStats(statsRes.data);
-
-      // Show toast for critical alerts
-      const criticalAlerts = alertsRes.data.filter(a => a.severity === 'danger');
-      if (criticalAlerts.length > 0) {
-        setToast({
-          message: `Você tem ${criticalAlerts.length} orçamento(s) ultrapassado(s)!`,
-          type: 'danger',
-          duration: 6000
-        });
-      }
+      const response = await api.get('/transactions');
+      setTransactions(response.data);
     } catch (err) {
-      console.error('Erro ao buscar dados:', err);
+      console.error('Erro ao buscar transações:', err);
       setToast({
-        message: 'Erro ao carregar dados do dashboard',
+        message: 'Erro ao carregar transações',
         type: 'error',
         duration: 4000
       });
@@ -45,42 +35,137 @@ const DashboardPage = () => {
     }
   };
 
-  const handleDismissAlert = (alertId) => {
-    setAlerts(alerts.filter(a => a.id !== alertId));
-    setToast({
-      message: 'Alerta dispensado',
-      type: 'info',
-      duration: 2000
+  // Get unique months from transactions
+  const availableMonths = useMemo(() => {
+    const months = new Set();
+    transactions.forEach(t => {
+      const date = new Date(t.date);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      months.add(monthKey);
     });
-  };
+    return Array.from(months).sort().reverse();
+  }, [transactions]);
 
-  const getSummaryStats = () => {
-    const totalBudgets = stats.length;
-    const exceededCount = stats.filter(s => s.status === 'exceeded').length;
-    const warningCount = stats.filter(s => s.status === 'warning').length;
-    const okCount = stats.filter(s => s.status === 'ok').length;
-    const totalLimit = stats.reduce((sum, s) => sum + s.limit, 0);
-    const totalSpent = stats.reduce((sum, s) => sum + s.totalSpent, 0);
+  // Get unique categories
+  const availableCategories = useMemo(() => {
+    const categories = new Set();
+    transactions.forEach(t => {
+      if (t.category) categories.add(t.category);
+    });
+    return Array.from(categories).sort();
+  }, [transactions]);
+
+  // Filter transactions
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter(t => {
+      // Type filter
+      if (selectedType !== 'all' && t.type !== selectedType) return false;
+
+      // Month filter
+      if (selectedMonth !== 'all') {
+        const tDate = new Date(t.date);
+        const tMonthKey = `${tDate.getFullYear()}-${String(tDate.getMonth() + 1).padStart(2, '0')}`;
+        if (tMonthKey !== selectedMonth) return false;
+      }
+
+      // Category filter
+      if (selectedCategory !== 'all' && t.category !== selectedCategory) return false;
+
+      return true;
+    });
+  }, [transactions, selectedType, selectedMonth, selectedCategory]);
+
+  // Group transactions
+  const groupedData = useMemo(() => {
+    const groups = {};
+
+    filteredTransactions.forEach(t => {
+      let key;
+
+      if (groupBy === 'category') {
+        key = t.category || 'Sem Categoria';
+      } else if (groupBy === 'date') {
+        const date = new Date(t.date);
+        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      } else if (groupBy === 'type') {
+        key = t.type === 'expense' ? 'Despesas' : 'Receitas';
+      }
+
+      if (!groups[key]) {
+        groups[key] = {
+          items: [],
+          total: 0,
+          count: 0
+        };
+      }
+
+      groups[key].items.push(t);
+      groups[key].total += t.amount;
+      groups[key].count += 1;
+    });
+
+    // Convert to array and sort by total
+    return Object.entries(groups)
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.total - a.total);
+  }, [filteredTransactions, groupBy]);
+
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const expenses = filteredTransactions.filter(t => t.type === 'expense');
+    const incomes = filteredTransactions.filter(t => t.type === 'income');
+
+    const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
+    const totalIncome = incomes.reduce((sum, t) => sum + t.amount, 0);
+    const balance = totalIncome - totalExpenses;
 
     return {
-      totalBudgets,
-      exceededCount,
-      warningCount,
-      okCount,
-      totalLimit,
-      totalSpent,
-      totalRemaining: totalLimit - totalSpent,
-      overallPercentage: totalLimit > 0 ? ((totalSpent / totalLimit) * 100).toFixed(1) : 0
+      totalExpenses,
+      totalIncome,
+      balance,
+      expenseCount: expenses.length,
+      incomeCount: incomes.length,
+      avgExpense: expenses.length > 0 ? totalExpenses / expenses.length : 0,
+      avgIncome: incomes.length > 0 ? totalIncome / incomes.length : 0
     };
+  }, [filteredTransactions]);
+
+  // Format month name
+  const getMonthName = (monthKey) => {
+    if (monthKey === 'all') return 'Todos os Meses';
+    const [year, month] = monthKey.split('-');
+    const date = new Date(year, month - 1);
+    return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   };
 
-  const summary = getSummaryStats();
+  // Get group icon
+  const getGroupIcon = (groupName) => {
+    if (groupBy === 'type') {
+      return groupName === 'Despesas' ? '💸' : '💰';
+    } else if (groupBy === 'date') {
+      return '📅';
+    } else {
+      // Category icons
+      const iconMap = {
+        'Alimentação': '🍔',
+        'Transporte': '🚗',
+        'Saúde': '🏥',
+        'Educação': '📚',
+        'Lazer': '🎮',
+        'Moradia': '🏠',
+        'Vestuário': '👔',
+        'OCR Upload': '📸',
+        'default': '📦'
+      };
+      return iconMap[groupName] || iconMap['default'];
+    }
+  };
 
   if (loading) {
     return (
       <div className="dashboard-container">
-        <div className="loading-spinner">
-          <div className="spinner"></div>
+        <div className="loading-spinner-container">
+          <div className="cyber-spinner"></div>
           <p>Carregando dashboard...</p>
         </div>
       </div>
@@ -98,127 +183,195 @@ const DashboardPage = () => {
         />
       )}
 
+      {/* Header */}
       <div className="dashboard-header">
-        <h1>Dashboard Financeiro</h1>
-        <p className="subtitle">Visão geral dos seus gastos e orçamentos</p>
+        <h1 className="dashboard-title">💎 Dashboard Financeiro</h1>
+        <p className="dashboard-subtitle">
+          Visualize e analise suas despesas e receitas
+        </p>
       </div>
 
-      {/* Summary Cards */}
-      {stats.length > 0 && (
-        <div className="summary-cards">
-          <div className="summary-card card-primary">
-            <div className="card-icon">💰</div>
-            <div className="card-content">
-              <h3>Orçamento Total</h3>
-              <p className="card-value">R$ {summary.totalLimit.toFixed(2)}</p>
-            </div>
-          </div>
-
-          <div className="summary-card card-expense">
-            <div className="card-icon">💸</div>
-            <div className="card-content">
-              <h3>Total Gasto</h3>
-              <p className="card-value">R$ {summary.totalSpent.toFixed(2)}</p>
-              <p className="card-detail">{summary.overallPercentage}% do total</p>
-            </div>
-          </div>
-
-          <div className="summary-card card-remaining">
-            <div className="card-icon">💵</div>
-            <div className="card-content">
-              <h3>Saldo Restante</h3>
-              <p className={`card-value ${summary.totalRemaining < 0 ? 'negative' : ''}`}>
-                R$ {summary.totalRemaining.toFixed(2)}
-              </p>
-            </div>
-          </div>
-
-          <div className="summary-card card-status">
-            <div className="card-icon">📊</div>
-            <div className="card-content">
-              <h3>Status</h3>
-              <div className="status-counts">
-                {summary.exceededCount > 0 && (
-                  <span className="status-badge danger">{summary.exceededCount} Excedidos</span>
-                )}
-                {summary.warningCount > 0 && (
-                  <span className="status-badge warning">{summary.warningCount} Alerta</span>
-                )}
-                {summary.okCount > 0 && (
-                  <span className="status-badge success">{summary.okCount} OK</span>
-                )}
-              </div>
-            </div>
+      {/* Statistics Cards */}
+      <div className="stats-grid">
+        <div className="stat-card stat-card-income">
+          <div className="stat-icon">💰</div>
+          <div className="stat-content">
+            <div className="stat-label">Receitas</div>
+            <div className="stat-value">R$ {stats.totalIncome.toFixed(2)}</div>
+            <div className="stat-detail">{stats.incomeCount} transação(ões)</div>
           </div>
         </div>
-      )}
 
-      {/* Active Alerts Section */}
-      {alerts.length > 0 ? (
-        <div className="alerts-section">
+        <div className="stat-card stat-card-expense">
+          <div className="stat-icon">💸</div>
+          <div className="stat-content">
+            <div className="stat-label">Despesas</div>
+            <div className="stat-value">R$ {stats.totalExpenses.toFixed(2)}</div>
+            <div className="stat-detail">{stats.expenseCount} transação(ões)</div>
+          </div>
+        </div>
+
+        <div className={`stat-card stat-card-balance ${stats.balance >= 0 ? 'positive' : 'negative'}`}>
+          <div className="stat-icon">{stats.balance >= 0 ? '✅' : '⚠️'}</div>
+          <div className="stat-content">
+            <div className="stat-label">Saldo</div>
+            <div className="stat-value">R$ {stats.balance.toFixed(2)}</div>
+            <div className="stat-detail">{stats.balance >= 0 ? 'Positivo' : 'Negativo'}</div>
+          </div>
+        </div>
+
+        <div className="stat-card stat-card-info">
+          <div className="stat-icon">📊</div>
+          <div className="stat-content">
+            <div className="stat-label">Total</div>
+            <div className="stat-value">{filteredTransactions.length}</div>
+            <div className="stat-detail">transações</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="filters-section">
+        <div className="filters-header">
+          <h3>🔍 Filtros</h3>
+        </div>
+
+        <div className="filters-grid">
+          {/* Type Filter */}
+          <div className="filter-group">
+            <label className="filter-label">Tipo</label>
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">Todos</option>
+              <option value="expense">Despesas</option>
+              <option value="income">Receitas</option>
+            </select>
+          </div>
+
+          {/* Month Filter */}
+          <div className="filter-group">
+            <label className="filter-label">Mês</label>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">Todos os Meses</option>
+              {availableMonths.map(month => (
+                <option key={month} value={month}>
+                  {getMonthName(month)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Category Filter */}
+          <div className="filter-group">
+            <label className="filter-label">Categoria</label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">Todas as Categorias</option>
+              {availableCategories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Group By */}
+          <div className="filter-group">
+            <label className="filter-label">Agrupar Por</label>
+            <select
+              value={groupBy}
+              onChange={(e) => setGroupBy(e.target.value)}
+              className="filter-select"
+            >
+              <option value="category">Categoria</option>
+              <option value="date">Mês</option>
+              <option value="type">Tipo</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Clear Filters */}
+        {(selectedType !== 'all' || selectedMonth !== 'all' || selectedCategory !== 'all') && (
+          <button
+            onClick={() => {
+              setSelectedType('all');
+              setSelectedMonth('all');
+              setSelectedCategory('all');
+            }}
+            className="clear-filters-btn"
+          >
+            ❌ Limpar Filtros
+          </button>
+        )}
+      </div>
+
+      {/* Grouped Data */}
+      {groupedData.length > 0 ? (
+        <div className="grouped-data-section">
           <div className="section-header">
-            <h2>⚠️ Alertas Ativos ({alerts.length})</h2>
-            <p className="section-subtitle">
-              Orçamentos que atingiram o limite de alerta ou foram ultrapassados
-            </p>
+            <h3>📊 Dados Agrupados por {groupBy === 'category' ? 'Categoria' : groupBy === 'date' ? 'Mês' : 'Tipo'}</h3>
+            <span className="group-count">{groupedData.length} grupo(s)</span>
           </div>
-          <div className="alerts-list">
-            {alerts.map((alert) => (
-              <BudgetAlert
-                key={alert.id}
-                alert={alert}
-                onDismiss={handleDismissAlert}
-                showDetails={true}
-              />
+
+          <div className="groups-grid">
+            {groupedData.map((group, index) => (
+              <div key={index} className="group-card">
+                <div className="group-header">
+                  <div className="group-title">
+                    <span className="group-icon">{getGroupIcon(group.name)}</span>
+                    <span className="group-name">{group.name}</span>
+                  </div>
+                  <div className="group-count-badge">{group.count}</div>
+                </div>
+
+                <div className="group-total">
+                  <span className="group-total-label">Total:</span>
+                  <span className="group-total-value">R$ {group.total.toFixed(2)}</span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="group-progress">
+                  <div
+                    className="group-progress-fill"
+                    style={{ width: `${(group.total / stats.totalExpenses) * 100}%` }}
+                  />
+                </div>
+
+                <div className="group-percentage">
+                  {((group.total / stats.totalExpenses) * 100).toFixed(1)}% do total
+                </div>
+
+                {/* Items preview */}
+                <div className="group-items-preview">
+                  {group.items.slice(0, 3).map((item, idx) => (
+                    <div key={idx} className="preview-item">
+                      <span className="preview-desc">{item.description}</span>
+                      <span className="preview-amount">R$ {item.amount.toFixed(2)}</span>
+                    </div>
+                  ))}
+                  {group.items.length > 3 && (
+                    <div className="preview-more">
+                      +{group.items.length - 3} mais
+                    </div>
+                  )}
+                </div>
+              </div>
             ))}
-          </div>
-        </div>
-      ) : stats.length > 0 ? (
-        <div className="no-alerts-section">
-          <div className="success-message">
-            <div className="success-icon">✅</div>
-            <h2>Parabéns!</h2>
-            <p>Todos os seus orçamentos estão dentro dos limites estabelecidos.</p>
           </div>
         </div>
       ) : (
-        <div className="empty-state-section">
+        <div className="empty-state">
           <div className="empty-icon">📊</div>
-          <h2>Nenhum orçamento configurado</h2>
-          <p>Configure seus primeiros orçamentos para começar a controlar seus gastos!</p>
-          <a href="/budgets" className="btn btn-primary">Configurar Orçamentos</a>
-        </div>
-      )}
-
-      {/* Quick Stats */}
-      {stats.length > 0 && (
-        <div className="quick-stats-section">
-          <h2>Visão Rápida por Categoria</h2>
-          <div className="quick-stats-grid">
-            {stats.slice(0, 6).map((stat) => (
-              <div key={stat.id} className={`quick-stat-card status-${stat.status}`}>
-                <div className="stat-header">
-                  <h4>{stat.category}</h4>
-                  <span className="stat-percentage">{stat.percentage}%</span>
-                </div>
-                <div className="mini-progress">
-                  <div
-                    className={`mini-progress-fill ${stat.status}`}
-                    style={{ width: `${Math.min(parseFloat(stat.percentage), 100)}%` }}
-                  />
-                </div>
-                <div className="stat-footer">
-                  <span>R$ {parseFloat(stat.totalSpent).toFixed(2)}</span>
-                  <span className="stat-limit">/ R$ {parseFloat(stat.limit).toFixed(2)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          {stats.length > 6 && (
-            <div className="view-all-link">
-              <a href="/budgets">Ver todos os orçamentos →</a>
-            </div>
-          )}
+          <h3>Nenhuma transação encontrada</h3>
+          <p>Ajuste os filtros ou adicione novas transações</p>
         </div>
       )}
     </div>
