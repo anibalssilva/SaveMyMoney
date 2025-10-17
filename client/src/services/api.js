@@ -45,6 +45,7 @@ export const uploadReceipt = (formData) => api.post('/transactions/ocr', formDat
     'Content-Type': 'multipart/form-data',
   },
 });
+export const saveOcrTransactions = (data) => api.post('/transactions/ocr/save', data);
 export const uploadPdfStatement = (formData) => api.post('/transactions/pdf', formData, {
   headers: {
     'Content-Type': 'multipart/form-data',

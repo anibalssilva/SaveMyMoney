@@ -214,7 +214,7 @@ router.get('/export', auth, async (req, res) => {
 const upload = multer({ storage: multer.memoryStorage() });
 
 // @route   POST api/transactions/ocr
-// @desc    Create transactions from a receipt image using Advanced OCR
+// @desc    Extract data from receipt image (does NOT save to database)
 // @access  Private
 router.post('/ocr', [auth, upload.single('receipt')], async (req, res) => {
   if (!req.file) {
@@ -244,25 +244,23 @@ router.post('/ocr', [auth, upload.single('receipt')], async (req, res) => {
       });
     }
 
-    // Convert extracted items to transactions
-    const transactionsToCreate = result.items.map(item => ({
-      user: req.user.id,
+    // Format items for frontend (NOT saving to database yet)
+    const extractedItems = result.items.map(item => ({
       description: item.description,
       amount: item.amount,
       category: 'OCR Upload',
-      type: 'expense',
-      date: new Date() // Use current date for receipt items
+      type: 'expense'
     }));
 
-    // Save to database
-    const createdTransactions = await Transaction.insertMany(transactionsToCreate);
-
-    // Return detailed response
+    // Return extraction results WITHOUT saving to database
     res.json({
-      transactions: createdTransactions,
+      items: extractedItems,
       metadata: {
-        totalItems: createdTransactions.length,
-        totalAmount: createdTransactions.reduce((sum, t) => sum + t.amount, 0),
+        // Receipt metadata (establishment, CNPJ, date, payment method, etc.)
+        ...result.metadata,
+        // Extraction metadata
+        totalItems: extractedItems.length,
+        totalAmount: extractedItems.reduce((sum, t) => sum + t.amount, 0),
         method: result.method,
         confidence: result.confidence,
         extractionDetails: result.details
@@ -282,6 +280,65 @@ router.post('/ocr', [auth, upload.single('receipt')], async (req, res) => {
     });
   }
 });
+
+// @route   POST api/transactions/ocr/save
+// @desc    Save reviewed OCR extracted transactions to database
+// @access  Private
+router.post('/ocr/save', [auth], async (req, res) => {
+  const { items, metadata } = req.body;
+
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ msg: 'Nenhum item para salvar.' });
+  }
+
+  try {
+    // Use date from metadata if available, otherwise use current date
+    const transactionDate = metadata?.date
+      ? parseBrazilianDate(metadata.date)
+      : new Date();
+
+    // Convert items to transactions
+    const transactionsToCreate = items.map(item => ({
+      user: req.user.id,
+      description: item.description,
+      amount: item.amount,
+      category: item.category || 'OCR Upload',
+      type: item.type || 'expense',
+      date: transactionDate
+    }));
+
+    // Save to database
+    const createdTransactions = await Transaction.insertMany(transactionsToCreate);
+
+    console.log(`✅ Saved ${createdTransactions.length} transactions to database`);
+
+    res.json({
+      success: true,
+      transactions: createdTransactions,
+      message: `${createdTransactions.length} transação(ões) salva(s) com sucesso!`
+    });
+
+  } catch (err) {
+    console.error('❌ Error saving transactions:', err.message);
+    res.status(500).json({
+      msg: 'Erro ao salvar transações no banco de dados.',
+      error: err.message
+    });
+  }
+});
+
+// Helper function to parse Brazilian date format (DD/MM/YYYY)
+function parseBrazilianDate(dateStr) {
+  if (!dateStr) return new Date();
+
+  const parts = dateStr.split('/');
+  if (parts.length === 3) {
+    const [day, month, year] = parts;
+    return new Date(year, month - 1, day);
+  }
+
+  return new Date();
+}
 
 // @route   POST api/transactions/pdf
 // @desc    Create transactions from a PDF bank statement

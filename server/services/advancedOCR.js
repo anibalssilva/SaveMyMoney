@@ -142,7 +142,7 @@ async function extractWithTesseract(imageBuffer) {
 }
 
 /**
- * Extract and validate using OpenAI GPT-4 Vision
+ * Extract COMPLETE receipt data including metadata using OpenAI GPT-4 Vision
  */
 async function extractWithOpenAI(imageBuffer) {
   initializeOpenAI();
@@ -164,29 +164,52 @@ async function extractWithOpenAI(imageBuffer) {
           content: [
             {
               type: 'text',
-              text: `Você é um especialista em extração de dados de cupons fiscais brasileiros.
+              text: `Você é um especialista em extração COMPLETA de dados de cupons fiscais brasileiros.
 
 INSTRUÇÕES:
-1. Analise a imagem do cupom fiscal
-2. Extraia APENAS os produtos/serviços comprados com seus valores
-3. Ignore linhas de total, subtotal, impostos, troco, pagamento, CPF, CNPJ, etc.
-4. Para cada item, extraia: descrição e valor
+Analise a imagem do cupom fiscal e extraia:
+
+1. PRODUTOS: Todos os itens comprados com valores INDIVIDUAIS
+2. ESTABELECIMENTO: Nome da loja/empresa
+3. CNPJ: Número do CNPJ
+4. DATA: Data da compra (formato DD/MM/YYYY)
+5. HORA: Hora da compra (se disponível)
+6. TOTAL PAGO: Valor total da compra
+7. FORMA DE PAGAMENTO: Identifique se foi:
+   - Cartão de Crédito
+   - Cartão de Débito
+   - Dinheiro
+   - PIX
+   - Outro
 
 FORMATO DE RESPOSTA (JSON):
 {
   "items": [
-    {"description": "Nome do produto exato", "amount": 12.50},
-    {"description": "Outro produto", "amount": 5.99}
+    {"description": "Nome do produto exato", "amount": 12.50, "quantity": 1}
   ],
+  "metadata": {
+    "establishment": "Nome da loja",
+    "cnpj": "00.000.000/0000-00",
+    "date": "DD/MM/YYYY",
+    "time": "HH:MM:SS",
+    "total": 49.90,
+    "paymentMethod": {
+      "type": "credit|debit|cash|pix|other",
+      "details": "Cartão de Crédito"
+    }
+  },
   "confidence": "high|medium|low",
-  "notes": "Observações sobre a qualidade da imagem ou dificuldades"
+  "notes": "Observações"
 }
 
-IMPORTANTE:
-- Use o valor UNITÁRIO se houver quantidade
-- Valores em formato brasileiro: 12,50 ou 12.50
-- Descrições sem códigos ou números de item
-- Se a imagem estiver ilegível, retorne confidence: "low" e items vazio`
+REGRAS IMPORTANTES:
+- Extraia APENAS itens comprados (ignore totais, impostos, descontos)
+- Use valores com 2 casas decimais (12.50 não 12.5)
+- Se não encontrar algum dado, use null
+- CNPJ: tente encontrar no cabeçalho do cupom
+- Data: procure próximo ao final do cupom
+- Pagamento: busque por palavras como "CREDITO", "DEBITO", "DINHEIRO", "PAGAMENTO"
+- Se imagem ilegível, retorne confidence: "low"`
             },
             {
               type: 'image_url',
@@ -198,7 +221,7 @@ IMPORTANTE:
           ]
         }
       ],
-      max_tokens: 1000,
+      max_tokens: 1500,
       temperature: 0.1, // Low temperature for consistent extraction
     });
 
@@ -213,10 +236,12 @@ IMPORTANTE:
 
     const result = JSON.parse(jsonMatch[0]);
     console.log('[OpenAI] Extracted items:', result.items?.length || 0);
+    console.log('[OpenAI] Metadata:', result.metadata);
     console.log('[OpenAI] Confidence:', result.confidence);
 
     return {
       items: result.items || [],
+      metadata: result.metadata || {},
       confidence: result.confidence,
       notes: result.notes,
       method: 'openai-vision',
@@ -224,8 +249,89 @@ IMPORTANTE:
     };
   } catch (error) {
     console.error('[OpenAI] Error:', error.message);
-    return { items: [], confidence: 'error', method: 'openai-vision', error: error.message };
+    return { items: [], metadata: {}, confidence: 'error', method: 'openai-vision', error: error.message };
   }
+}
+
+/**
+ * Extract metadata from receipt text (date, CNPJ, payment method, etc.)
+ */
+function extractMetadata(text) {
+  const metadata = {
+    establishment: null,
+    cnpj: null,
+    date: null,
+    time: null,
+    total: null,
+    paymentMethod: {
+      type: null,
+      details: null
+    }
+  };
+
+  const lines = text.split('\n');
+
+  // Extract CNPJ (XX.XXX.XXX/XXXX-XX)
+  const cnpjMatch = text.match(/(\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/]?\d{4}[-]?\d{2})/);
+  if (cnpjMatch) {
+    metadata.cnpj = cnpjMatch[1].replace(/[\s]/g, '');
+  }
+
+  // Extract date (DD/MM/YYYY or DD/MM/YY)
+  const dateMatch = text.match(/(\d{2}[\/\-\.]\d{2}[\/\-\.]\d{2,4})/);
+  if (dateMatch) {
+    metadata.date = dateMatch[1];
+  }
+
+  // Extract time (HH:MM:SS or HH:MM)
+  const timeMatch = text.match(/(\d{2}:\d{2}(?::\d{2})?)/);
+  if (timeMatch) {
+    metadata.time = timeMatch[1];
+  }
+
+  // Extract establishment name (usually first few lines, uppercase)
+  for (let i = 0; i < Math.min(5, lines.length); i++) {
+    const line = lines[i].trim();
+    if (line.length > 5 && line.length < 60 && /^[A-ZÀ-Ú\s&\-]+$/.test(line)) {
+      metadata.establishment = line;
+      break;
+    }
+  }
+
+  // Extract total value
+  const totalPatterns = [
+    /TOTAL\s*(?:R\$)?\s*([\d]+[,.][\d]{2})/i,
+    /VALOR\s+TOTAL\s*(?:R\$)?\s*([\d]+[,.][\d]{2})/i,
+    /V\.TOTAL\s*(?:R\$)?\s*([\d]+[,.][\d]{2})/i
+  ];
+
+  for (const pattern of totalPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      metadata.total = parseFloat(match[1].replace(',', '.').replace(/\./g, ''));
+      break;
+    }
+  }
+
+  // Extract payment method
+  const lowerText = text.toLowerCase();
+
+  if (lowerText.includes('cartao de credito') || lowerText.includes('credito')) {
+    metadata.paymentMethod.type = 'credit';
+    metadata.paymentMethod.details = 'Cartão de Crédito';
+  } else if (lowerText.includes('cartao de debito') || lowerText.includes('debito')) {
+    metadata.paymentMethod.type = 'debit';
+    metadata.paymentMethod.details = 'Cartão de Débito';
+  } else if (lowerText.includes('dinheiro') || lowerText.includes('especie')) {
+    metadata.paymentMethod.type = 'cash';
+    metadata.paymentMethod.details = 'Dinheiro';
+  } else if (lowerText.includes('pix')) {
+    metadata.paymentMethod.type = 'pix';
+    metadata.paymentMethod.details = 'PIX';
+  }
+
+  console.log('[MetadataExtractor] Extracted:', metadata);
+  return metadata;
 }
 
 /**
@@ -337,7 +443,7 @@ function smartParseBrazilianReceipt(text) {
 }
 
 /**
- * Main OCR function - Hybrid approach
+ * Main OCR function - Hybrid approach with complete metadata extraction
  */
 async function extractReceiptData(imageBuffer) {
   console.log('=== Starting Advanced OCR Extraction ===');
@@ -358,6 +464,7 @@ async function extractReceiptData(imageBuffer) {
         console.log('✅ OpenAI extraction successful with high confidence');
         return {
           items: openaiResult.items,
+          metadata: openaiResult.metadata || {},
           method: 'openai-vision',
           confidence: 'high',
           details: openaiResult
@@ -369,17 +476,41 @@ async function extractReceiptData(imageBuffer) {
     console.log('Step 3: Running Tesseract OCR...');
     const tesseractResult = await extractWithTesseract(processedBuffer);
 
-    // Step 4: Parse with smart parser
-    console.log('Step 4: Parsing with smart Brazilian receipt parser...');
+    // Step 4: Extract metadata from Tesseract text
+    console.log('Step 4: Extracting metadata...');
+    const tesseractMetadata = extractMetadata(tesseractResult.text);
+
+    // Step 5: Parse items with smart parser
+    console.log('Step 5: Parsing with smart Brazilian receipt parser...');
     const parsedItems = smartParseBrazilianReceipt(tesseractResult.text);
 
-    // Step 5: If OpenAI gave medium confidence, merge results
+    // Step 6: Merge metadata from OpenAI and Tesseract
+    let finalMetadata = tesseractMetadata;
+
+    if (openaiResult && openaiResult.metadata) {
+      console.log('Step 6: Merging metadata from OpenAI and Tesseract...');
+
+      // Prioritize OpenAI metadata, but fill in missing fields with Tesseract data
+      finalMetadata = {
+        establishment: openaiResult.metadata.establishment || tesseractMetadata.establishment,
+        cnpj: openaiResult.metadata.cnpj || tesseractMetadata.cnpj,
+        date: openaiResult.metadata.date || tesseractMetadata.date,
+        time: openaiResult.metadata.time || tesseractMetadata.time,
+        total: openaiResult.metadata.total || tesseractMetadata.total,
+        paymentMethod: {
+          type: openaiResult.metadata.paymentMethod?.type || tesseractMetadata.paymentMethod?.type,
+          details: openaiResult.metadata.paymentMethod?.details || tesseractMetadata.paymentMethod?.details
+        }
+      };
+    }
+
+    // Step 7: If OpenAI gave medium confidence, merge item results
     let finalItems = parsedItems;
     let finalMethod = 'tesseract+parser';
     let finalConfidence = tesseractResult.confidence;
 
     if (openaiResult && openaiResult.items.length > 0) {
-      console.log('Step 5: Merging OpenAI and Tesseract results...');
+      console.log('Step 7: Merging OpenAI and Tesseract item results...');
 
       // Use OpenAI items as primary, Tesseract as fallback
       if (openaiResult.confidence === 'medium' && parsedItems.length > 0) {
@@ -405,9 +536,11 @@ async function extractReceiptData(imageBuffer) {
     }
 
     console.log(`✅ Final extraction: ${uniqueItems.length} items (method: ${finalMethod})`);
+    console.log(`✅ Metadata extracted:`, finalMetadata);
 
     return {
       items: uniqueItems,
+      metadata: finalMetadata,
       method: finalMethod,
       confidence: finalConfidence,
       details: {
@@ -435,5 +568,6 @@ module.exports = {
   preprocessImage,
   extractWithTesseract,
   extractWithOpenAI,
-  smartParseBrazilianReceipt
+  smartParseBrazilianReceipt,
+  extractMetadata
 };
