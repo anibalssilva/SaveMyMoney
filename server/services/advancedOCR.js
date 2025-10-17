@@ -432,10 +432,14 @@ Agora analise a imagem fornecida e retorne o JSON com TODOS os produtos.`
 }
 
 /**
- * Smart parser - combines Tesseract + OpenAI results
+ * Smart parser - Enhanced for Brazilian receipts (NFC-e, SAT)
+ * Handles multi-line product formats and various receipt structures
  */
 async function parseReceiptText(text) {
-  const lines = text.split('\n').filter(line => line.trim());
+  console.log('[Parser] Starting text parsing...');
+  console.log('[Parser] Full text (first 500 chars):', text.substring(0, 500));
+
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
 
   const items = [];
   const metadata = {
@@ -447,56 +451,119 @@ async function parseReceiptText(text) {
     paymentMethod: null,
   };
 
-  // Blacklist of keywords that should NOT be extracted as products
+  // Enhanced blacklist - keywords that indicate NON-product lines
   const blacklist = [
-    'CNPJ', 'CPF', 'EMITENTE', 'CONSUMIDOR', 'ENDERECO', 'TELEFONE', 'FONE',
-    'TOTAL', 'SUBTOTAL', 'VALOR A PAGAR', 'FORMA PAGAMENTO', 'CARTAO', 'DEBITO', 'CREDITO',
-    'PIX', 'DINHEIRO', 'TROCO', 'NFC-e', 'SAT', 'SERIE', 'PROTOCOLO', 'CHAVE DE ACESSO',
-    'DATA', 'HORA', 'DOCUMENTO', 'AUXILIAR', 'TRIBUTOS', 'ARREDONDAMENTO',
-    'VENDEDOR', 'OPERADOR', 'CAIXA', 'LOJA', 'ESTABELECIMENTO'
+    'CARTEIRA DIGITAL', 'FORMA DE PAGAMENTO', 'FORMA PAGAMENTO',
+    'CARTAO', 'DEBITO', 'CREDITO', 'PIX', 'DINHEIRO', 'TROCO',
+    'CNPJ', 'CPF', 'EMITENTE', 'CONSUMIDOR', 'ENDERECO', 'TELEFONE',
+    'QTD TOTAL', 'QTDE TOTAL', 'TOTAL DE ITENS', 'QUANTIDADE TOTAL',
+    'VALOR A PAGAR', 'SUBTOTAL', 'DESCONTO', 'ACRESCIMO',
+    'NFC-e', 'SAT', 'SERIE', 'PROTOCOLO', 'CHAVE', 'DANFE',
+    'DATA', 'HORA', 'DOCUMENTO', 'TRIBUTOS', 'ARREDONDAMENTO',
+    'VENDEDOR', 'OPERADOR', 'CAIXA', 'ESTABELECIMENTO',
+    'CODIGO', 'DESCRICAO', 'QTDE', 'VL.UNIT', 'VL.TOTAL' // Table headers
   ];
 
-  // Extract items - more precise regex that looks for product patterns
-  // Pattern: Description followed by quantity indicator (UN, PC, KG) and value
-  const itemPatterns = [
-    // Pattern 1: "PRODUCT NAME \n 1UN 10,50 10,50"
-    /^([A-Z0-9][A-Z0-9\s\/\-\.]+)\s+(\d+(?:UN|PC|KG|L|ML))\s+(\d+[,\.]\d{2})\s+(\d+[,\.]\d{2})$/i,
-    // Pattern 2: "PRODUCT NAME 1UN × 10,50 = 10,50"
-    /^([A-Z0-9][A-Z0-9\s\/\-\.]+)\s+(\d+)(?:UN|PC|KG|L|ML)?\s*[×xX]\s*(\d+[,\.]\d{2})\s*=?\s*(\d+[,\.]\d{2})$/i,
-    // Pattern 3: Simple "PRODUCT NAME 10,50"
-    /^([A-Z][A-Z0-9\s\/\-\.]{5,})\s+(\d+[,\.]\d{2})$/i,
-  ];
+  // Strategy: Look for product patterns across multiple lines
+  // Many receipts have: Line 1 = Product name + barcode, Line 2 = Quantity + Price
 
-  for (let i = 0; i < lines.length; i++) {
+  let i = 0;
+  while (i < lines.length) {
     const line = lines[i];
+    const nextLine = lines[i + 1] || '';
 
-    // Skip if line contains blacklisted keywords
-    if (blacklist.some(keyword => line.toUpperCase().includes(keyword))) {
+    // Skip blacklisted lines
+    const lineUpper = line.toUpperCase();
+    if (blacklist.some(keyword => lineUpper.includes(keyword))) {
+      i++;
       continue;
     }
 
-    // Skip lines that are too short or too long
-    if (line.length < 5 || line.length > 100) continue;
+    // Skip lines that are too short or just numbers
+    if (line.length < 3 || /^\d+$/.test(line)) {
+      i++;
+      continue;
+    }
 
-    // Try each pattern
-    for (const pattern of itemPatterns) {
-      const match = line.match(pattern);
-      if (match) {
-        const description = match[1].trim();
-        const amount = parseFloat((match[match.length - 1] || match[2]).replace(',', '.'));
+    let matched = false;
 
-        // Validate amount is reasonable (between 0.01 and 10000)
-        if (amount > 0.01 && amount < 10000) {
-          items.push({
-            description,
-            amount,
-            quantity: 1,
-          });
+    // Pattern 1: Product name in current line, value in next line
+    // Example:
+    //   "7891193010012 BISN SEVEN BOYS 300G TRAD"
+    //   "                     1UN   5,49        5,49"
+    if (nextLine && /^\s*\d+\s*(?:UN|PC|KG|L|ML|G)\s+[\d,\.]+\s+[\d,\.]+/.test(nextLine)) {
+      // Extract product name (remove leading numbers/barcodes)
+      let description = line.replace(/^\d+\s+/, '').trim();
+      description = description.replace(/^\d{13}\s+/, '').trim(); // Remove EAN-13 barcode
+
+      // Extract value from next line (last number)
+      const valueMatch = nextLine.match(/([\d]+[,\.][\d]{2})\s*$/);
+      if (valueMatch && description.length > 3) {
+        const amount = parseFloat(valueMatch[1].replace(',', '.'));
+
+        if (amount > 0.01 && amount < 50000) {
+          console.log(`[Parser] Found item (multi-line): "${description}" = R$ ${amount}`);
+          items.push({ description, amount, quantity: 1 });
+          matched = true;
+          i += 2; // Skip next line
+          continue;
         }
-        break;
       }
     }
+
+    // Pattern 2: Everything in one line - "PRODUCT NAME  1UN x 10,50  10,50"
+    const singleLineMatch = line.match(/^(.+?)\s+\d+\s*(?:UN|PC|KG|L|ML|G)?\s*[xX×]\s*([\d,\.]+)\s+([\d,\.]+)\s*$/);
+    if (singleLineMatch) {
+      let description = singleLineMatch[1].trim();
+      description = description.replace(/^\d+\s+/, '').trim(); // Remove item number
+      description = description.replace(/^\d{13}\s+/, '').trim(); // Remove barcode
+
+      const amount = parseFloat(singleLineMatch[3].replace(',', '.'));
+
+      if (description.length > 3 && amount > 0.01 && amount < 50000) {
+        console.log(`[Parser] Found item (single-line x): "${description}" = R$ ${amount}`);
+        items.push({ description, amount, quantity: 1 });
+        matched = true;
+        i++;
+        continue;
+      }
+    }
+
+    // Pattern 3: Simple format - "PRODUCT NAME    49,90"
+    const simpleMatch = line.match(/^(.+?)\s{2,}([\d]+[,\.][\d]{2})\s*$/);
+    if (simpleMatch) {
+      let description = simpleMatch[1].trim();
+      description = description.replace(/^\d+\s+/, '').trim();
+      description = description.replace(/^\d{13}\s+/, '').trim();
+
+      const amount = parseFloat(simpleMatch[2].replace(',', '.'));
+
+      // Extra validation: must have letters (not just numbers)
+      if (description.length > 3 && /[A-Za-z]/.test(description) && amount > 0.01 && amount < 50000) {
+        console.log(`[Parser] Found item (simple): "${description}" = R$ ${amount}`);
+        items.push({ description, amount, quantity: 1 });
+        matched = true;
+      }
+    }
+
+    // Pattern 4: Look for product codes followed by description
+    // Example: "001 PRODUTO NOME   10,50"
+    const codeMatch = line.match(/^\d{1,4}\s+(.+?)\s+([\d]+[,\.][\d]{2})\s*$/);
+    if (!matched && codeMatch) {
+      const description = codeMatch[1].trim();
+      const amount = parseFloat(codeMatch[2].replace(',', '.'));
+
+      if (description.length > 3 && /[A-Za-z]/.test(description) && amount > 0.01 && amount < 50000) {
+        console.log(`[Parser] Found item (with code): "${description}" = R$ ${amount}`);
+        items.push({ description, amount, quantity: 1 });
+        matched = true;
+      }
+    }
+
+    i++;
   }
+
+  console.log(`[Parser] Total items found: ${items.length}`);
 
   // Extract total - look for "Valor a Pagar", "TOTAL", etc.
   const totalPatterns = [
