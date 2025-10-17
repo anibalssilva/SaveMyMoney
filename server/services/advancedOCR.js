@@ -451,6 +451,26 @@ async function parseReceiptText(text) {
     paymentMethod: null,
   };
 
+  // Try to detect expected number of items from receipt
+  let expectedItemCount = null;
+  const itemCountPatterns = [
+    /(?:QTD|QTDE|QUANTIDADE)\.?\s*TOTAL\s*(?:DE\s*)?(?:ITENS)?[:\s]*(\d+)/i,
+    /TOTAL\s*(?:DE\s*)?ITENS[:\s]*(\d+)/i,
+    /(\d+)\s*(?:ITENS|PRODUTOS)/i
+  ];
+
+  for (const line of lines) {
+    for (const pattern of itemCountPatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        expectedItemCount = parseInt(match[1]);
+        console.log(`[Parser] Expected item count detected: ${expectedItemCount}`);
+        break;
+      }
+    }
+    if (expectedItemCount) break;
+  }
+
   // Enhanced blacklist - keywords that indicate NON-product lines
   const blacklist = [
     'CARTEIRA DIGITAL', 'FORMA DE PAGAMENTO', 'FORMA PAGAMENTO',
@@ -583,7 +603,25 @@ async function parseReceiptText(text) {
     i++;
   }
 
-  console.log(`[Parser] Total items found: ${items.length}`);
+  // Remove duplicates (same description and amount)
+  const uniqueItems = [];
+  const seen = new Set();
+
+  for (const item of items) {
+    const key = `${item.description.toLowerCase()}_${item.amount.toFixed(2)}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniqueItems.push(item);
+    } else {
+      console.log(`[Parser] Removed duplicate: "${item.description}" = R$ ${item.amount}`);
+    }
+  }
+
+  console.log(`[Parser] Total items found: ${uniqueItems.length} (${items.length - uniqueItems.length} duplicates removed)`);
+
+  // Replace items with unique items
+  items.length = 0;
+  items.push(...uniqueItems);
 
   // Extract total - look for "Valor a Pagar", "TOTAL", etc.
   const totalPatterns = [
@@ -655,7 +693,57 @@ async function parseReceiptText(text) {
     if (metadata.paymentMethod) break;
   }
 
-  return { items, metadata, confidence: items.length > 0 ? 'medium' : 'low', method: 'parser' };
+  // Validation: Compare sum of items with receipt total
+  const itemsSum = items.reduce((sum, item) => sum + item.amount, 0);
+  console.log(`\n[Parser] ═══════════════════════════════════════`);
+  console.log(`[Parser] 📊 EXTRACTION SUMMARY`);
+  console.log(`[Parser] ═══════════════════════════════════════`);
+  console.log(`[Parser] Items extracted: ${items.length}${expectedItemCount ? ` (expected: ${expectedItemCount})` : ''}`);
+  console.log(`[Parser] Sum of items: R$ ${itemsSum.toFixed(2)}`);
+  console.log(`[Parser] Receipt total: R$ ${metadata.total ? metadata.total.toFixed(2) : 'N/A'}`);
+
+  // Item count validation
+  if (expectedItemCount) {
+    if (items.length === expectedItemCount) {
+      console.log(`[Parser] ✅ Item count: MATCH (${items.length}/${expectedItemCount})`);
+    } else if (items.length < expectedItemCount) {
+      console.log(`[Parser] ⚠️  Item count: Missing ${expectedItemCount - items.length} item(s)`);
+    } else {
+      console.log(`[Parser] ⚠️  Item count: ${items.length - expectedItemCount} extra item(s) detected`);
+    }
+  }
+
+  // Total amount validation
+  if (metadata.total && items.length > 0) {
+    const difference = Math.abs(itemsSum - metadata.total);
+    const percentDiff = (difference / metadata.total) * 100;
+
+    if (percentDiff < 1) {
+      console.log(`[Parser] ✅ Amount validation: PERFECT MATCH (diff: R$ ${difference.toFixed(2)})`);
+    } else if (percentDiff < 10) {
+      console.log(`[Parser] ⚠️  Amount validation: Close match (diff: ${percentDiff.toFixed(1)}%)`);
+    } else {
+      console.log(`[Parser] ❌ Amount validation: MISMATCH (diff: ${percentDiff.toFixed(1)}%)`);
+      console.log(`[Parser] ⚠️  Some items may be missing or incorrectly extracted`);
+    }
+  } else if (items.length === 0) {
+    console.log(`[Parser] ❌ No items extracted - parser failed`);
+  }
+
+  console.log(`[Parser] ═══════════════════════════════════════\n`);
+
+  return {
+    items,
+    metadata,
+    confidence: items.length > 0 ? 'medium' : 'low',
+    method: 'parser',
+    validation: {
+      itemsSum: parseFloat(itemsSum.toFixed(2)),
+      receiptTotal: metadata.total,
+      difference: metadata.total ? parseFloat(Math.abs(itemsSum - metadata.total).toFixed(2)) : null,
+      percentDiff: metadata.total ? parseFloat(((Math.abs(itemsSum - metadata.total) / metadata.total) * 100).toFixed(2)) : null
+    }
+  };
 }
 
 /**
