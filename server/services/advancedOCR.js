@@ -164,59 +164,86 @@ async function extractWithOpenAI(imageBuffer) {
           content: [
             {
               type: 'text',
-              text: `Você é um especialista em extração de dados estruturados de cupons fiscais brasileiros (SAT, NFC-e ou DANFE).
+              text: `Você é um especialista em extração de dados de cupons fiscais brasileiros (NFC-e, SAT, DANFE).
 
-Sua tarefa é ANALISAR a imagem de um cupom fiscal e retornar um JSON completo e padronizado, conforme o formato abaixo.
+🎯 SUA TAREFA: Analise a imagem do cupom fiscal e extraia SOMENTE os produtos comprados com seus valores.
 
-⚙️ REGRAS DE EXTRAÇÃO:
-1. Extraia **todos os produtos** com nome completo, quantidade e valor unitário.
-2. Inclua também o **valor total pago**, o **CNPJ** do estabelecimento, **nome da loja**, **data e hora** da compra, e **forma de pagamento**.
-3. Identifique automaticamente o tipo de pagamento com base em palavras como:
-   - "CREDITO", "CARTÃO DE CRÉDITO" → "type": "credit"
-   - "DÉBITO", "CARTÃO DE DÉBITO" → "type": "debit"
-   - "DINHEIRO" → "type": "cash"
-   - "PIX" → "type": "pix"
-   - "CARTEIRA DIGITAL", "VALE", "OUTRO" → "type": "other"
-4. Use **valores numéricos com duas casas decimais**.
-5. Se um dado não estiver presente, retorne null.
-6. Converta a data para o formato DD/MM/YYYY.
-7. Todos os valores devem estar em reais (R$), sem o símbolo.
+⚠️ REGRAS CRÍTICAS:
+1. **PRODUTOS**: Extraia APENAS itens que sejam PRODUTOS COMPRADOS (com descrição + valor)
+   - ✅ CORRETO: "BISN SEVEN BOYS 300G" → R$ 5.49
+   - ✅ CORRETO: "FRAL HUGGIES MAXIMA PROT C56" → R$ 73.47
+   - ❌ ERRADO: NÃO extraia "CNPJ", "Valor a Pagar", "Data", "NFC-e", etc como produtos!
+
+2. **VALORES**: Use o valor TOTAL do item (quantidade × valor unitário)
+   - Se mostra "1UN × 5,49 = 5,49" → use 5.49
+   - Se mostra "2UN × 10,00 = 20,00" → use 20.00
+
+3. **FORMATO DE NÚMEROS**:
+   - Converta vírgula para ponto: "73,47" → 73.47
+   - Remova "R$" e espaços: "R$ 78,96" → 78.96
+
+4. **FORMA DE PAGAMENTO**:
+   - "CARTAO DE CREDITO" ou "CREDITO" → "credit"
+   - "CARTAO DE DEBITO" ou "DEBITO" → "debit"
+   - "CARTEIRA DIGITAL" → "other"
+   - "PIX" → "pix"
+   - "DINHEIRO" → "cash"
+
+5. **DATA**: Formato DD/MM/YYYY (ex: "16/10/2025")
 
 ---
 
-📦 **FORMATO JSON DE SAÍDA:**
+📋 EXEMPLO DE CUPOM REAL:
+
+CODIGO DESCRICAO                    QTDE  UN  VL.UNIT  VL.TOTAL
+7891193010012 BISN SEVEN BOYS 300G TRAD
+                                     1UN   5,49        5,49
+7896007552825 FRAL HUGGIES MAXIMA PROT C56 XG
+                                     1UN  73,47       73,47
+
+Qtd. Total de Itens                                       2
+Valor a Pagar R$                                      78,96
+FORMA PAGAMENTO                              VALOR PAGO
+CARTEIRA DIGITAL                                     78,96
+
+---
+
+✅ JSON CORRETO PARA ESTE EXEMPLO:
 
 {
   "items": [
-    {"description": "Nome do produto exato", "amount": 12.50, "quantity": 1}
+    {"description": "BISN SEVEN BOYS 300G TRAD", "amount": 5.49, "quantity": 1},
+    {"description": "FRAL HUGGIES MAXIMA PROT C56 XG", "amount": 73.47, "quantity": 1}
   ],
   "metadata": {
-    "establishment": "Nome do estabelecimento",
-    "cnpj": "00.000.000/0000-00",
-    "date": "DD/MM/YYYY",
-    "time": "HH:MM:SS",
-    "total": 0.00,
+    "establishment": "COMERCIAL ZARAGOZA IMP EXP LTDA",
+    "cnpj": "05.868.574/0020-62",
+    "date": "16/10/2025",
+    "time": "14:02:02",
+    "total": 78.96,
     "paymentMethod": {
-      "type": "credit|debit|cash|pix|other",
-      "details": "Texto original da forma de pagamento"
+      "type": "other",
+      "details": "CARTEIRA DIGITAL"
     }
   },
-  "confidence": "high|medium|low",
-  "notes": "Observações relevantes, como vendedor, série, ou número do SAT/NFC-e."
+  "confidence": "high",
+  "notes": "NFC-e n. 000002083 Série 406"
 }
 
 ---
 
-🧩 **INSTRUÇÕES ADICIONAIS:**
-- Ignore seções como "TOTAL DE TRIBUTOS", "ARREDONDAMENTO", "TROCO", ou "DOCUMENTO AUXILIAR".
-- O foco é apenas nas informações de **itens e pagamento**.
-- Se houver múltiplas formas de pagamento, liste a principal ou divida proporcionalmente.
-- Identifique **o vendedor** se constar no cupom.
-- Mantenha todos os textos em português.
+🚫 O QUE **NÃO** EXTRAIR COMO PRODUTO:
+- CNPJ do estabelecimento
+- Endereço da loja
+- Data/hora
+- "Valor a Pagar"
+- "Forma de Pagamento"
+- "Total de Itens"
+- Números de série, protocolo, SAT
+- QR Code, códigos de barras
+- Informações fiscais
 
----
-
-📸 Após o upload da imagem do cupom fiscal, retorne SOMENTE o JSON final, sem explicações adicionais.`
+📸 Retorne APENAS o JSON, sem texto adicional.`
             },
             {
               type: 'image_url',
@@ -271,31 +298,76 @@ async function parseReceiptText(text) {
     paymentMethod: null,
   };
 
-  // Extract items (simple regex-based parsing)
-  const itemRegex = /(.+?)\s+(\d+[,\.]\d{2})/;
-  for (const line of lines) {
-    const match = line.match(itemRegex);
-    if (match) {
-      items.push({
-        description: match[1].trim(),
-        amount: parseFloat(match[2].replace(',', '.')),
-        quantity: 1,
-      });
+  // Blacklist of keywords that should NOT be extracted as products
+  const blacklist = [
+    'CNPJ', 'CPF', 'EMITENTE', 'CONSUMIDOR', 'ENDERECO', 'TELEFONE', 'FONE',
+    'TOTAL', 'SUBTOTAL', 'VALOR A PAGAR', 'FORMA PAGAMENTO', 'CARTAO', 'DEBITO', 'CREDITO',
+    'PIX', 'DINHEIRO', 'TROCO', 'NFC-e', 'SAT', 'SERIE', 'PROTOCOLO', 'CHAVE DE ACESSO',
+    'DATA', 'HORA', 'DOCUMENTO', 'AUXILIAR', 'TRIBUTOS', 'ARREDONDAMENTO',
+    'VENDEDOR', 'OPERADOR', 'CAIXA', 'LOJA', 'ESTABELECIMENTO'
+  ];
+
+  // Extract items - more precise regex that looks for product patterns
+  // Pattern: Description followed by quantity indicator (UN, PC, KG) and value
+  const itemPatterns = [
+    // Pattern 1: "PRODUCT NAME \n 1UN 10,50 10,50"
+    /^([A-Z0-9][A-Z0-9\s\/\-\.]+)\s+(\d+(?:UN|PC|KG|L|ML))\s+(\d+[,\.]\d{2})\s+(\d+[,\.]\d{2})$/i,
+    // Pattern 2: "PRODUCT NAME 1UN × 10,50 = 10,50"
+    /^([A-Z0-9][A-Z0-9\s\/\-\.]+)\s+(\d+)(?:UN|PC|KG|L|ML)?\s*[×xX]\s*(\d+[,\.]\d{2})\s*=?\s*(\d+[,\.]\d{2})$/i,
+    // Pattern 3: Simple "PRODUCT NAME 10,50"
+    /^([A-Z][A-Z0-9\s\/\-\.]{5,})\s+(\d+[,\.]\d{2})$/i,
+  ];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Skip if line contains blacklisted keywords
+    if (blacklist.some(keyword => line.toUpperCase().includes(keyword))) {
+      continue;
+    }
+
+    // Skip lines that are too short or too long
+    if (line.length < 5 || line.length > 100) continue;
+
+    // Try each pattern
+    for (const pattern of itemPatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        const description = match[1].trim();
+        const amount = parseFloat((match[match.length - 1] || match[2]).replace(',', '.'));
+
+        // Validate amount is reasonable (between 0.01 and 10000)
+        if (amount > 0.01 && amount < 10000) {
+          items.push({
+            description,
+            amount,
+            quantity: 1,
+          });
+        }
+        break;
+      }
     }
   }
 
-  // Extract total
-  const totalRegex = /TOTAL[:\s]+(R?\$?\s*)?(\d+[,\.]\d{2})/i;
+  // Extract total - look for "Valor a Pagar", "TOTAL", etc.
+  const totalPatterns = [
+    /(?:VALOR\s+A\s+PAGAR|TOTAL|VL\.?\s*TOTAL)[:\s]*R?\$?\s*(\d+[,\.]\d{2})/i,
+    /TOTAL[:\s]+(\d+[,\.]\d{2})/i,
+  ];
+
   for (const line of lines) {
-    const match = line.match(totalRegex);
-    if (match) {
-      metadata.total = parseFloat(match[2].replace(',', '.'));
-      break;
+    for (const pattern of totalPatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        metadata.total = parseFloat(match[1].replace(',', '.'));
+        break;
+      }
     }
+    if (metadata.total) break;
   }
 
-  // Extract CNPJ
-  const cnpjRegex = /(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/;
+  // Extract CNPJ (with or without formatting)
+  const cnpjRegex = /CNPJ[:\s]*(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})/i;
   for (const line of lines) {
     const match = line.match(cnpjRegex);
     if (match) {
@@ -304,17 +376,50 @@ async function parseReceiptText(text) {
     }
   }
 
-  // Extract date
-  const dateRegex = /(\d{2}[\/\-]\d{2}[\/\-]\d{4})/;
+  // Extract date (DD/MM/YYYY or DD/MM/YY)
+  const dateRegex = /(\d{2}[\/\-]\d{2}[\/\-]\d{2,4})/;
   for (const line of lines) {
+    // Skip if line contains time-related keywords without date
+    if (line.match(/HORA|HORARIO/i) && !line.match(/DATA/i)) continue;
+
     const match = line.match(dateRegex);
     if (match) {
-      metadata.date = match[1].replace(/-/g, '/');
+      let dateStr = match[1].replace(/-/g, '/');
+      // Convert YY to YYYY if needed
+      const parts = dateStr.split('/');
+      if (parts[2].length === 2) {
+        const year = parseInt(parts[2]);
+        parts[2] = year > 50 ? `19${year}` : `20${year}`;
+        dateStr = parts.join('/');
+      }
+      metadata.date = dateStr;
       break;
     }
   }
 
-  return { items, metadata, confidence: 'medium', method: 'parser' };
+  // Extract payment method
+  const paymentPatterns = [
+    { regex: /CARTAO\s+(?:DE\s+)?CREDITO|CREDITO/i, type: 'credit' },
+    { regex: /CARTAO\s+(?:DE\s+)?DEBITO|DEBITO/i, type: 'debit' },
+    { regex: /CARTEIRA\s+DIGITAL/i, type: 'other' },
+    { regex: /\bPIX\b/i, type: 'pix' },
+    { regex: /DINHEIRO/i, type: 'cash' },
+  ];
+
+  for (const line of lines) {
+    for (const { regex, type } of paymentPatterns) {
+      if (regex.test(line)) {
+        metadata.paymentMethod = {
+          type,
+          details: line.trim(),
+        };
+        break;
+      }
+    }
+    if (metadata.paymentMethod) break;
+  }
+
+  return { items, metadata, confidence: items.length > 0 ? 'medium' : 'low', method: 'parser' };
 }
 
 /**
