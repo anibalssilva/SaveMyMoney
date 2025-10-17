@@ -102,8 +102,28 @@ const OcrUploadPage = () => {
 
     try {
       const { data } = await uploadReceipt(formData);
-      setExtractedTransactions(data);
-      setMessage(`✅ ${data.length} item(ns) extraído(s) com sucesso!`);
+
+      // New API returns { transactions, metadata }
+      const transactions = data.transactions || data; // Fallback for old format
+      const metadata = data.metadata;
+
+      setExtractedTransactions(transactions);
+
+      // Enhanced success message with metadata
+      let successMsg = `✅ ${transactions.length} item(ns) extraído(s) com sucesso!`;
+      if (metadata) {
+        successMsg += ` | Total: R$ ${metadata.totalAmount.toFixed(2)}`;
+        if (metadata.method) {
+          const methodNames = {
+            'openai-vision': '🤖 IA Vision',
+            'tesseract+parser': '📝 OCR+Parser',
+            'hybrid': '🔄 Híbrido'
+          };
+          successMsg += ` | Método: ${methodNames[metadata.method] || metadata.method}`;
+        }
+      }
+
+      setMessage(successMsg);
 
       // Limpar imagem e arquivo após extração bem-sucedida
       setImageSrc(null);
@@ -115,7 +135,14 @@ const OcrUploadPage = () => {
       }, 100);
     } catch (error) {
       const errMsg = error.response?.data?.msg || 'Ocorreu um erro durante o processamento do OCR.';
-      setMessage(`❌ Erro: ${errMsg}`);
+      const suggestions = error.response?.data?.suggestions || [];
+
+      let fullMsg = `❌ Erro: ${errMsg}`;
+      if (suggestions.length > 0) {
+        fullMsg += '\n\n' + suggestions.join('\n');
+      }
+
+      setMessage(fullMsg);
     } finally {
       setLoading(false);
     }
