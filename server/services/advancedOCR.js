@@ -396,6 +396,10 @@ function smartParseBrazilianReceipt(text) {
     // Pattern 6: PRODUTO with thousands separator
     // Ex: "NOTEBOOK DELL  1.299,99"
     /^(.+?)\s+([\d]{1,3}\.[\d]{3}[,][\d]{2})$/,
+
+    // Pattern 7: PRODUTO + QTD + UNIDADE + x + PREÇO + TOTAL (NEW)
+    // Ex: "COPO QUENCHER 1 UN X 49,90 49,90"
+    /^(.+?)\s+[\d,]+\s+(?:PC|UN|KG|CX|LT|ML|G|PCT)\s+[xX*]\s*[\d,.]+\s+([\d,.]+)$/
   ];
 
   for (const line of lines) {
