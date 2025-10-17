@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { Bar, Line, Pie } from 'react-chartjs-2';
-import { getAllTransactions } from '../services/api';
+import { getTransactions } from '../services/api';
 import './FinancialDashboardPage.css';
 
 // Register Chart.js components
@@ -22,7 +22,7 @@ const FinancialDashboardPage = () => {
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const { data } = await getAllTransactions();
+      const { data } = await getTransactions();
       setTransactions(data);
     } catch (error) {
       console.error('Error fetching transactions:', error);
