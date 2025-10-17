@@ -1,7 +1,7 @@
 /**
  * ADVANCED OCR SERVICE
  * Multi-method OCR with AI-powered validation
- * Combines: Tesseract.js + OpenAI GPT-4 Vision + Smart Parser
+ * Combines: Tesseract.js + OpenAI GPT-4o Vision + Smart Parser
  */
 
 const { createWorker } = require('tesseract.js');
@@ -142,7 +142,8 @@ async function extractWithTesseract(imageBuffer) {
 }
 
 /**
- * Extract COMPLETE receipt data including metadata using OpenAI GPT-4 Vision
+ * Extract COMPLETE receipt data including ALL items using OpenAI GPT-4o Vision
+ * Enhanced prompt to extract individual products, not just payment totals
  */
 async function extractWithOpenAI(imageBuffer) {
   initializeOpenAI();
@@ -157,80 +158,211 @@ async function extractWithOpenAI(imageBuffer) {
     const base64Image = imageBuffer.toString('base64');
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o', // GPT-4 with vision
+      model: 'gpt-4o', // GPT-4o with vision - best for OCR
       messages: [
+        {
+          role: 'system',
+          content: `Você é um especialista em OCR de cupons fiscais brasileiros (NFC-e, SAT, Nota Paulista).
+
+SUA ÚNICA TAREFA: Extrair TODOS os produtos comprados (nome + valor individual de cada item).
+
+REGRAS CRÍTICAS:
+1. NÃO extraia formas de pagamento como se fossem produtos
+2. NÃO extraia totais/subtotais como produtos
+3. NÃO extraia códigos de barras isolados
+4. SEMPRE valide: soma dos itens ≈ total do cupom`
+        },
         {
           role: 'user',
           content: [
             {
               type: 'text',
-              text: `Você é um especialista em extração de dados estruturados de cupons fiscais brasileiros (SAT, NFC-e ou DANFE).
+              text: `Analise esta imagem de cupom fiscal e extraia TODOS os produtos comprados.
 
-              Sua tarefa é ANALISAR a imagem de um cupom fiscal e retornar um JSON completo e padronizado, conforme o formato abaixo.
+═══════════════════════════════════════════════════════════════════
+📋 ESTRUTURAS COMUNS DE PRODUTOS EM CUPONS BRASILEIROS
+═══════════════════════════════════════════════════════════════════
 
-              ⚙️ REGRAS DE EXTRAÇÃO:
-              1. Extraia **todos os produtos** com nome completo, quantidade e valor unitário.
-              2. Inclua também o **valor total pago**, o **CNPJ** do estabelecimento, **nome da loja**, **data e hora** da compra, e **forma de pagamento**.
-              3. Identifique automaticamente o tipo de pagamento com base em palavras como:
-                - “CREDITO”, “CARTÃO DE CRÉDITO” → `"type": "credit"`
-                - “DÉBITO”, “CARTÃO DE DÉBITO” → `"type": "debit"`
-                - “DINHEIRO” → `"type": "cash"`
-                - “PIX” → `"type": "pix"`
-                - “CARTEIRA DIGITAL”, “VALE”, “OUTRO” → `"type": "other"`
-              4. Use **valores numéricos com duas casas decimais**.
-              5. Se um dado não estiver presente, retorne `null`.
-              6. Converta a data para o formato `DD/MM/YYYY`.
-              7. Todos os valores devem estar em reais (R$), sem o símbolo.
+TIPO 1 - Código e descrição em linhas separadas:
+┌───────────────────────────────────────────────────────────────┐
+│ 001  7891234567890 PRODUTO EXEMPLO MARCA 500G                 │
+│                         1 UN  x  12,50  =           12,50     │
+└───────────────────────────────────────────────────────────────┘
+📌 EXTRAIR: "PRODUTO EXEMPLO MARCA 500G" → 12.50
 
-              ---
+TIPO 2 - Descrição e valor na mesma linha:
+┌───────────────────────────────────────────────────────────────┐
+│ 002  ARROZ BRANCO 5KG         2 UN x 25,90          51,80     │
+└───────────────────────────────────────────────────────────────┘
+📌 EXTRAIR: "ARROZ BRANCO 5KG" → 51.80
 
-              📦 **FORMATO JSON DE SAÍDA:**
+TIPO 3 - Tabela estruturada:
+┌───────────────────────────────────────────────────────────────┐
+│ ITEM  CODIGO  DESCRICAO              QTD  VL.UNIT  VL.TOTAL   │
+│ 001   789123  FEIJAO PRETO 1KG       1    8,99     8,99       │
+│ 002   456789  MACARRAO INTEGRAL 500G 3    4,50     13,50      │
+└───────────────────────────────────────────────────────────────┘
+📌 EXTRAIR:
+  - "FEIJAO PRETO 1KG" → 8.99
+  - "MACARRAO INTEGRAL 500G" → 13.50
 
-              {
-                "items": [
-                  {"description": "Nome do produto exato", "amount": 12.50, "quantity": 1}
-                ],
-                "metadata": {
-                  "establishment": "Nome do estabelecimento",
-                  "cnpj": "00.000.000/0000-00",
-                  "date": "DD/MM/YYYY",
-                  "time": "HH:MM:SS",
-                  "total": 0.00,
-                  "paymentMethod": {
-                    "type": "credit|debit|cash|pix|other",
-                    "details": "Texto original da forma de pagamento"
-                  }
-                },
-                "confidence": "high|medium|low",
-                "notes": "Observações relevantes, como vendedor, série, ou número do SAT/NFC-e."
-              }
+═══════════════════════════════════════════════════════════════════
+⚠️ SEÇÕES QUE NÃO SÃO PRODUTOS (IGNORAR COMPLETAMENTE)
+═══════════════════════════════════════════════════════════════════
 
----
+❌ Seção de Pagamento:
+   FORMA DE PAGAMENTO       VALOR PAGO
+   PIX                      150,00
+   CARTEIRA DIGITAL         150,00
+   DEBITO MASTERCARD        150,00
 
-🧩 **INSTRUÇÕES ADICIONAIS:**
-- Ignore seções como “TOTAL DE TRIBUTOS”, “ARREDONDAMENTO”, “TROCO”, ou “DOCUMENTO AUXILIAR”.
-- O foco é apenas nas informações de **itens e pagamento**.
-- Se houver múltiplas formas de pagamento, liste a principal ou divida proporcionalmente.
-- Identifique **o vendedor** se constar no cupom.
-- Mantenha todos os textos em português.
+❌ Seção de Totais:
+   SUBTOTAL              R$ 145,50
+   DESCONTO              R$   5,00
+   TOTAL A PAGAR         R$ 140,50
+   Qtd. Total de Itens        15
 
----
+❌ Informações Fiscais:
+   NFC-e: 000012345 Serie 1
+   Protocolo de Autorização: XYZ123
+   Consulte pela Chave de Acesso em...
 
-📸 Após o upload da imagem do cupom fiscal, retorne SOMENTE o JSON final, sem explicações adicionais.
-- Se imagem ilegível, retorne confidence: "low"`
+═══════════════════════════════════════════════════════════════════
+✅ EXEMPLO COMPLETO - EXTRAÇÃO CORRETA
+═══════════════════════════════════════════════════════════════════
+
+CUPOM FISCAL EXEMPLO:
+
+SUPERMERCADO BOM PREÇO LTDA
+CNPJ: 12.345.678/0001-99
+Data: 17/10/2025  Hora: 15:30
+
+──────────────────────────────────────────────────────────────────
+ITEM  CODIGO       DESCRICAO                 QTD  VL.UN   VL.TOTAL
+──────────────────────────────────────────────────────────────────
+001   7891000100103
+      LEITE INTEGRAL 1L MARCA A              2    5,99    11,98
+
+002   7891000100207
+      CAFE TORRADO 500G MARCA B              1    18,90   18,90
+
+003   PÃOZINHO FRANCES                       10   0,60    6,00
+──────────────────────────────────────────────────────────────────
+Qtd. Total de Itens: 3
+SUBTOTAL                                             R$ 36,88
+──────────────────────────────────────────────────────────────────
+FORMA DE PAGAMENTO                           VALOR PAGO
+CARTAO DEBITO                                       36,88
+──────────────────────────────────────────────────────────────────
+
+JSON CORRETO A SER RETORNADO:
+
+{
+  "items": [
+    {
+      "description": "LEITE INTEGRAL 1L MARCA A",
+      "amount": 11.98,
+      "quantity": 2
+    },
+    {
+      "description": "CAFE TORRADO 500G MARCA B",
+      "amount": 18.90,
+      "quantity": 1
+    },
+    {
+      "description": "PÃOZINHO FRANCES",
+      "amount": 6.00,
+      "quantity": 10
+    }
+  ],
+  "metadata": {
+    "establishment": "SUPERMERCADO BOM PREÇO LTDA",
+    "cnpj": "12.345.678/0001-99",
+    "date": "17/10/2025",
+    "time": "15:30",
+    "total": 36.88,
+    "paymentMethod": {
+      "type": "debit",
+      "details": "CARTAO DEBITO"
+    }
+  },
+  "confidence": "high",
+  "notes": "3 items extracted. Sum validation: 11.98 + 18.90 + 6.00 = 36.88 ✓"
+}
+
+═══════════════════════════════════════════════════════════════════
+🔍 PROCESSO DE EXTRAÇÃO - PASSO A PASSO
+═══════════════════════════════════════════════════════════════════
+
+PASSO 1: Localize a seção de produtos
+  → Procure por cabeçalhos: "ITEM", "CODIGO", "DESCRICAO", "PRODUTO"
+  → Produtos geralmente vêm ANTES de "TOTAL", "FORMA DE PAGAMENTO"
+
+PASSO 2: Identifique cada produto
+  → Produtos têm descrições em MAIÚSCULAS (geralmente)
+  → Produtos têm códigos de barras (13 dígitos) OU números de item (001, 002)
+  → Produtos têm quantidade (UN, PC, KG) e valores monetários
+
+PASSO 3: Para cada produto encontrado:
+  a) Extraia a DESCRIÇÃO (sem código de barras, sem número do item)
+  b) Extraia o VALOR TOTAL do item (última coluna numérica)
+  c) Extraia a QUANTIDADE (se disponível)
+
+PASSO 4: Validação final
+  → Some todos os valores extraídos
+  → Compare com o "TOTAL" ou "VALOR A PAGAR" do cupom
+  → Se diferença > 10%: REVISE a extração
+
+PASSO 5: Ignore completamente
+  → Linhas após "FORMA DE PAGAMENTO", "TOTAL", "TRIBUTOS"
+  → Informações de CNPJ, endereço, telefone
+  → Códigos NFC-e, protocolos, chaves de acesso
+
+═══════════════════════════════════════════════════════════════════
+📤 FORMATO DA RESPOSTA
+═══════════════════════════════════════════════════════════════════
+
+Retorne APENAS um JSON válido com esta estrutura:
+
+{
+  "items": [
+    {
+      "description": "NOME DO PRODUTO (string limpa, sem código)",
+      "amount": 0.00,  // número com ponto decimal
+      "quantity": 1    // número inteiro
+    }
+  ],
+  "metadata": {
+    "establishment": "Nome do estabelecimento ou null",
+    "cnpj": "XX.XXX.XXX/XXXX-XX ou null",
+    "date": "DD/MM/YYYY ou null",
+    "time": "HH:MM:SS ou null",
+    "total": 0.00,  // total do cupom
+    "paymentMethod": {
+      "type": "debit|credit|pix|cash|other",
+      "details": "texto original da forma de pagamento"
+    }
+  },
+  "confidence": "high|medium|low",
+  "notes": "X items extracted. Sum: A + B + C = Total ✓/✗"
+}
+
+═══════════════════════════════════════════════════════════════════
+
+Agora analise a imagem fornecida e retorne o JSON com TODOS os produtos.`
             },
             {
               type: 'image_url',
               image_url: {
                 url: `data:image/png;base64,${base64Image}`,
                 detail: 'high'
-              }
-            }
-          ]
-        }
+              },
+            },
+          ],
+        },
       ],
-      max_tokens: 1500,
-      temperature: 0.1, // Low temperature for consistent extraction
+      max_tokens: 2500,
+      temperature: 0.1, // Low temperature for consistent, factual extraction
     });
 
     const content = response.choices[0].message.content;
@@ -239,365 +371,250 @@ async function extractWithOpenAI(imageBuffer) {
     // Parse JSON response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      throw new Error('No JSON found in response');
+      throw new Error('No JSON found in OpenAI response');
     }
 
-    const result = JSON.parse(jsonMatch[0]);
-    console.log('[OpenAI] Extracted items:', result.items?.length || 0);
-    console.log('[OpenAI] Metadata:', result.metadata);
-    console.log('[OpenAI] Confidence:', result.confidence);
+    const data = JSON.parse(jsonMatch[0]);
+    console.log('[OpenAI] Parsed data:', JSON.stringify(data, null, 2));
+
+    // Validate and filter items - remove non-product entries
+    const invalidKeywords = [
+      'CARTEIRA DIGITAL', 'DEBITO', 'CREDITO', 'PIX', 'DINHEIRO',
+      'PAGAMENTO', 'TOTAL', 'SUBTOTAL', 'VALOR A PAGAR', 'FORMA DE PAGAMENTO',
+      'CNPJ', 'CPF', 'EMITENTE', 'CONSUMIDOR', 'ENDERECO',
+      'DATA', 'HORA', 'NFC-e', 'SAT', 'SERIE', 'PROTOCOLO',
+      'VENDEDOR', 'OPERADOR', 'CAIXA'
+    ];
+
+    const validItems = (data.items || []).filter(item => {
+      const desc = item.description.toUpperCase();
+
+      // Check if item description contains any invalid keyword
+      const hasInvalidKeyword = invalidKeywords.some(keyword => desc.includes(keyword));
+
+      // Check if description is too short (likely not a real product)
+      const isTooShort = item.description.trim().length < 3;
+
+      // Check if amount is reasonable (between 0.01 and 50000)
+      const hasValidAmount = item.amount > 0.01 && item.amount < 50000;
+
+      if (hasInvalidKeyword) {
+        console.log(`[OpenAI] Filtered out invalid item: "${item.description}" (contains payment/metadata keyword)`);
+        return false;
+      }
+
+      if (isTooShort) {
+        console.log(`[OpenAI] Filtered out invalid item: "${item.description}" (too short)`);
+        return false;
+      }
+
+      if (!hasValidAmount) {
+        console.log(`[OpenAI] Filtered out invalid item: "${item.description}" (invalid amount: ${item.amount})`);
+        return false;
+      }
+
+      return true;
+    });
+
+    console.log(`[OpenAI] Validation: ${data.items?.length || 0} items → ${validItems.length} valid items`);
 
     return {
-      items: result.items || [],
-      metadata: result.metadata || {},
-      confidence: result.confidence,
-      notes: result.notes,
-      method: 'openai-vision',
-      rawResponse: content
+      items: validItems,
+      metadata: data.metadata || {},
+      confidence: data.confidence || 'medium',
+      notes: data.notes || '',
+      method: 'openai',
     };
   } catch (error) {
-    console.error('[OpenAI] Error:', error.message);
-    return { items: [], metadata: {}, confidence: 'error', method: 'openai-vision', error: error.message };
+    console.error('[OpenAI] Error:', error);
+    return null;
   }
 }
 
 /**
- * Extract metadata from receipt text (date, CNPJ, payment method, etc.)
+ * Smart parser - combines Tesseract + OpenAI results
  */
-function extractMetadata(text) {
+async function parseReceiptText(text) {
+  const lines = text.split('\n').filter(line => line.trim());
+
+  const items = [];
   const metadata = {
     establishment: null,
     cnpj: null,
     date: null,
     time: null,
     total: null,
-    paymentMethod: {
-      type: null,
-      details: null
-    }
+    paymentMethod: null,
   };
 
-  const lines = text.split('\n');
+  // Blacklist of keywords that should NOT be extracted as products
+  const blacklist = [
+    'CNPJ', 'CPF', 'EMITENTE', 'CONSUMIDOR', 'ENDERECO', 'TELEFONE', 'FONE',
+    'TOTAL', 'SUBTOTAL', 'VALOR A PAGAR', 'FORMA PAGAMENTO', 'CARTAO', 'DEBITO', 'CREDITO',
+    'PIX', 'DINHEIRO', 'TROCO', 'NFC-e', 'SAT', 'SERIE', 'PROTOCOLO', 'CHAVE DE ACESSO',
+    'DATA', 'HORA', 'DOCUMENTO', 'AUXILIAR', 'TRIBUTOS', 'ARREDONDAMENTO',
+    'VENDEDOR', 'OPERADOR', 'CAIXA', 'LOJA', 'ESTABELECIMENTO'
+  ];
 
-  // Extract CNPJ (XX.XXX.XXX/XXXX-XX)
-  const cnpjMatch = text.match(/(\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/]?\d{4}[-]?\d{2})/);
-  if (cnpjMatch) {
-    metadata.cnpj = cnpjMatch[1].replace(/[\s]/g, '');
+  // Extract items - more precise regex that looks for product patterns
+  // Pattern: Description followed by quantity indicator (UN, PC, KG) and value
+  const itemPatterns = [
+    // Pattern 1: "PRODUCT NAME \n 1UN 10,50 10,50"
+    /^([A-Z0-9][A-Z0-9\s\/\-\.]+)\s+(\d+(?:UN|PC|KG|L|ML))\s+(\d+[,\.]\d{2})\s+(\d+[,\.]\d{2})$/i,
+    // Pattern 2: "PRODUCT NAME 1UN × 10,50 = 10,50"
+    /^([A-Z0-9][A-Z0-9\s\/\-\.]+)\s+(\d+)(?:UN|PC|KG|L|ML)?\s*[×xX]\s*(\d+[,\.]\d{2})\s*=?\s*(\d+[,\.]\d{2})$/i,
+    // Pattern 3: Simple "PRODUCT NAME 10,50"
+    /^([A-Z][A-Z0-9\s\/\-\.]{5,})\s+(\d+[,\.]\d{2})$/i,
+  ];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Skip if line contains blacklisted keywords
+    if (blacklist.some(keyword => line.toUpperCase().includes(keyword))) {
+      continue;
+    }
+
+    // Skip lines that are too short or too long
+    if (line.length < 5 || line.length > 100) continue;
+
+    // Try each pattern
+    for (const pattern of itemPatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        const description = match[1].trim();
+        const amount = parseFloat((match[match.length - 1] || match[2]).replace(',', '.'));
+
+        // Validate amount is reasonable (between 0.01 and 10000)
+        if (amount > 0.01 && amount < 10000) {
+          items.push({
+            description,
+            amount,
+            quantity: 1,
+          });
+        }
+        break;
+      }
+    }
   }
 
-  // Extract date (DD/MM/YYYY or DD/MM/YY)
-  const dateMatch = text.match(/(\d{2}[\/\-\.]\d{2}[\/\-\.]\d{2,4})/);
-  if (dateMatch) {
-    metadata.date = dateMatch[1];
+  // Extract total - look for "Valor a Pagar", "TOTAL", etc.
+  const totalPatterns = [
+    /(?:VALOR\s+A\s+PAGAR|TOTAL|VL\.?\s*TOTAL)[:\s]*R?\$?\s*(\d+[,\.]\d{2})/i,
+    /TOTAL[:\s]+(\d+[,\.]\d{2})/i,
+  ];
+
+  for (const line of lines) {
+    for (const pattern of totalPatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        metadata.total = parseFloat(match[1].replace(',', '.'));
+        break;
+      }
+    }
+    if (metadata.total) break;
   }
 
-  // Extract time (HH:MM:SS or HH:MM)
-  const timeMatch = text.match(/(\d{2}:\d{2}(?::\d{2})?)/);
-  if (timeMatch) {
-    metadata.time = timeMatch[1];
-  }
-
-  // Extract establishment name (usually first few lines, uppercase)
-  for (let i = 0; i < Math.min(5, lines.length); i++) {
-    const line = lines[i].trim();
-    if (line.length > 5 && line.length < 60 && /^[A-ZÀ-Ú\s&\-]+$/.test(line)) {
-      metadata.establishment = line;
+  // Extract CNPJ (with or without formatting)
+  const cnpjRegex = /CNPJ[:\s]*(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})/i;
+  for (const line of lines) {
+    const match = line.match(cnpjRegex);
+    if (match) {
+      metadata.cnpj = match[1];
       break;
     }
   }
 
-  // Extract total value
-  const totalPatterns = [
-    /TOTAL\s*(?:R\$)?\s*([\d]+[,.][\d]{2})/i,
-    /VALOR\s+TOTAL\s*(?:R\$)?\s*([\d]+[,.][\d]{2})/i,
-    /V\.TOTAL\s*(?:R\$)?\s*([\d]+[,.][\d]{2})/i
-  ];
+  // Extract date (DD/MM/YYYY or DD/MM/YY)
+  const dateRegex = /(\d{2}[\/\-]\d{2}[\/\-]\d{2,4})/;
+  for (const line of lines) {
+    // Skip if line contains time-related keywords without date
+    if (line.match(/HORA|HORARIO/i) && !line.match(/DATA/i)) continue;
 
-  for (const pattern of totalPatterns) {
-    const match = text.match(pattern);
+    const match = line.match(dateRegex);
     if (match) {
-      metadata.total = parseFloat(match[1].replace(',', '.').replace(/\./g, ''));
+      let dateStr = match[1].replace(/-/g, '/');
+      // Convert YY to YYYY if needed
+      const parts = dateStr.split('/');
+      if (parts[2].length === 2) {
+        const year = parseInt(parts[2]);
+        parts[2] = year > 50 ? `19${year}` : `20${year}`;
+        dateStr = parts.join('/');
+      }
+      metadata.date = dateStr;
       break;
     }
   }
 
   // Extract payment method
-  const lowerText = text.toLowerCase();
-
-  if (lowerText.includes('cartao de credito') || lowerText.includes('credito')) {
-    metadata.paymentMethod.type = 'credit';
-    metadata.paymentMethod.details = 'Cartão de Crédito';
-  } else if (lowerText.includes('cartao de debito') || lowerText.includes('debito')) {
-    metadata.paymentMethod.type = 'debit';
-    metadata.paymentMethod.details = 'Cartão de Débito';
-  } else if (lowerText.includes('dinheiro') || lowerText.includes('especie')) {
-    metadata.paymentMethod.type = 'cash';
-    metadata.paymentMethod.details = 'Dinheiro';
-  } else if (lowerText.includes('pix')) {
-    metadata.paymentMethod.type = 'pix';
-    metadata.paymentMethod.details = 'PIX';
-  }
-
-  console.log('[MetadataExtractor] Extracted:', metadata);
-  return metadata;
-}
-
-/**
- * Smart parser for Brazilian receipts
- * Improved patterns based on real receipt analysis
- */
-function smartParseBrazilianReceipt(text) {
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  const items = [];
-
-  // Keywords to ignore (not products) - ENHANCED
-  const ignoreKeywords = [
-    // Totais e valores calculados
-    'total', 'subtotal', 'desconto', 'troco', 'pago', 'recebido', 'saldo',
-    'acrescimo', 'taxa', 'servico', 'gorjeta', 'valor total', 'v.total', 'v total',
-    'tot', 'soma', 'liquido', 'bruto',
-
-    // Formas de pagamento
-    'dinheiro', 'cartao', 'debito', 'credito', 'pix', 'especie', 'boleto',
-
-    // Informações fiscais
-    'cpf', 'cnpj', 'data', 'hora', 'cupom', 'fiscal', 'nfe', 'nota', 'danfe',
-    'sat', 'migre', 'nfc', 'chave', 'token', 'cfe', 'extrato',
-
-    // Metadados
-    'quantidade', 'qtd', 'cod', 'codigo', 'item', 'seq', 'un', 'descricao',
-
-    // Impostos
-    'icms', 'pis', 'cofins', 'issqn', 'iss', 'imposto', 'tributo', 'aproximado',
-
-    // Informações da loja
-    'vendedor', 'operador', 'caixa', 'endereco', 'telefone', 'cnae', 'ie', 'im',
-    'estabelecimento', 'loja', 'filial', 'site', 'www',
-
-    // Outros
-    'informacoes', 'consumidor', 'obrigado', 'volte sempre', 'atendimento',
-    'observacao', 'obs', 'servicos', 'contribuinte', 'atenção', 'atencao'
-  ];
-
-  // Enhanced patterns for Brazilian receipts
-  const patterns = [
-    // Pattern 1: PRODUTO (spaces) VALOR
-    // Ex: "COPO QUENCHER 420ML          49,90"
-    /^(.+?)\s{2,}([\d]+[,.][\d]{2})$/,
-
-    // Pattern 2: PRODUTO + PC/UN/KG + QTD + x + PREÇO + TOTAL
-    // Ex: "ARROZ 1KG  UN  1,000 x 12,99  12,99"
-    /^(.+?)\s+(?:PC|UN|KG|CX|LT|ML|G|PCT)\s+[\d,]+\s*[xX*]\s*[\d,]+\s+([\d,]+)$/,
-
-    // Pattern 3: QTD + PRODUTO + VALOR
-    // Ex: "1 PC X 49,90     49,90"
-    /^(?:\d+\s*)?(.+?)\s+[xX*]?\s*([\d]+[,.][\d]{2})\s*$/,
-
-    // Pattern 4: PRODUTO + R$ + VALOR
-    // Ex: "CAFE PILAO R$ 15,99"
-    /^(.+?)\s+R\$?\s*([\d]+[,.][\d]{2})$/,
-
-    // Pattern 5: Código + PRODUTO + VALOR
-    // Ex: "5056  COPO QUENCHER 420ML  49,90"
-    /^\d+\s+(.+?)\s+([\d]+[,.][\d]{2})$/,
-
-    // Pattern 6: PRODUTO with thousands separator
-    // Ex: "NOTEBOOK DELL  1.299,99"
-    /^(.+?)\s+([\d]{1,3}\.[\d]{3}[,][\d]{2})$/,
-
-    // Pattern 7: PRODUTO + QTD + UNIDADE + x + PREÇO + TOTAL (NEW)
-    // Ex: "COPO QUENCHER 1 UN X 49,90 49,90"
-    /^(.+?)\s+[\d,]+\s+(?:PC|UN|KG|CX|LT|ML|G|PCT)\s+[xX*]\s*[\d,.]+\s+([\d,.]+)$/
+  const paymentPatterns = [
+    { regex: /CARTAO\s+(?:DE\s+)?CREDITO|CREDITO/i, type: 'credit' },
+    { regex: /CARTAO\s+(?:DE\s+)?DEBITO|DEBITO/i, type: 'debit' },
+    { regex: /CARTEIRA\s+DIGITAL/i, type: 'other' },
+    { regex: /\bPIX\b/i, type: 'pix' },
+    { regex: /DINHEIRO/i, type: 'cash' },
   ];
 
   for (const line of lines) {
-    // Skip empty or very short lines
-    if (line.length < 3) continue;
-
-    // Skip lines with ignore keywords
-    const lowerLine = line.toLowerCase();
-    if (ignoreKeywords.some(keyword => lowerLine.includes(keyword))) {
-      continue;
-    }
-
-    // Extra validation: Skip lines that START with common non-product words
-    const startsWithInvalid = /^(total|subtotal|desconto|troco|pago|r\$|rs|\d+\s*r\$)/i.test(line);
-    if (startsWithInvalid) {
-      console.log(`[SmartParser] Skipping line starting with total/payment keyword: "${line}"`);
-      continue;
-    }
-
-    // Try each pattern
-    for (const pattern of patterns) {
-      const match = line.match(pattern);
-
-      if (match) {
-        let description = match[1].trim();
-        let amountStr = match[2].trim();
-
-        // Clean description
-        description = description
-          .replace(/^\d+\s*-?\s*/, '') // Remove leading numbers
-          .replace(/\s+/g, ' ')        // Normalize spaces
-          .replace(/^(PC|UN|KG|CX|LT|ML|G|PCT)\s+/i, '') // Remove unit prefix
-          .trim();
-
-        // Validate description
-        if (description.length < 3 || description.length > 100) continue;
-        if (/^\d+$/.test(description)) continue; // Only numbers
-        if (/^[^a-zA-Z]+$/.test(description)) continue; // No letters
-
-        // Parse amount
-        amountStr = amountStr
-          .replace(/\./g, '')  // Remove thousands separator
-          .replace(',', '.');  // Replace comma with dot
-
-        const amount = parseFloat(amountStr);
-
-        // Validate amount
-        if (isNaN(amount) || amount <= 0 || amount > 100000) continue;
-
-        // Check for duplicates
-        const isDuplicate = items.some(
-          item => item.description === description && Math.abs(item.amount - amount) < 0.01
-        );
-
-        if (!isDuplicate) {
-          items.push({
-            description,
-            amount,
-            originalLine: line,
-            pattern: patterns.indexOf(pattern) + 1
-          });
-          break; // Stop at first matching pattern
-        }
+    for (const { regex, type } of paymentPatterns) {
+      if (regex.test(line)) {
+        metadata.paymentMethod = {
+          type,
+          details: line.trim(),
+        };
+        break;
       }
     }
+    if (metadata.paymentMethod) break;
   }
 
-  console.log(`[SmartParser] Extracted ${items.length} items`);
-  return items;
+  return { items, metadata, confidence: items.length > 0 ? 'medium' : 'low', method: 'parser' };
 }
 
 /**
- * Main OCR function - Hybrid approach with complete metadata extraction
+ * Main function - orchestrates all OCR methods
  */
 async function extractReceiptData(imageBuffer) {
-  console.log('=== Starting Advanced OCR Extraction ===');
+  console.log('\n🔍 Starting Advanced OCR extraction...\n');
 
-  try {
-    // Step 1: Preprocess image
-    console.log('Step 1: Preprocessing image...');
-    const processedBuffer = await preprocessImage(imageBuffer);
+  // Step 1: Preprocess image
+  console.log('[1/4] Preprocessing image...');
+  const processedImage = await preprocessImage(imageBuffer);
 
-    // Step 2: Try OpenAI Vision first (if available)
-    let openaiResult = null;
-    if (process.env.OPENAI_API_KEY) {
-      console.log('Step 2: Attempting OpenAI GPT-4 Vision...');
-      openaiResult = await extractWithOpenAI(processedBuffer);
+  // Step 2: Extract with Tesseract
+  console.log('[2/4] Running Tesseract OCR...');
+  const tesseractResult = await extractWithTesseract(processedImage);
 
-      // If OpenAI has high confidence, use it directly
-      if (openaiResult && openaiResult.confidence === 'high' && openaiResult.items.length > 0) {
-        console.log('✅ OpenAI extraction successful with high confidence');
-        return {
-          items: openaiResult.items,
-          metadata: openaiResult.metadata || {},
-          method: 'openai-vision',
-          confidence: 'high',
-          details: openaiResult
-        };
-      }
-    }
+  // Step 3: Extract with OpenAI (if available)
+  console.log('[3/4] Running OpenAI Vision...');
+  const openaiResult = await extractWithOpenAI(imageBuffer);
 
-    // Step 3: Fallback to Tesseract
-    console.log('Step 3: Running Tesseract OCR...');
-    const tesseractResult = await extractWithTesseract(processedBuffer);
+  // Step 4: Parse Tesseract text as fallback
+  console.log('[4/4] Parsing text with smart parser...');
+  const parserResult = await parseReceiptText(tesseractResult.text);
 
-    // Step 4: Extract metadata from Tesseract text
-    console.log('Step 4: Extracting metadata...');
-    const tesseractMetadata = extractMetadata(tesseractResult.text);
+  // Combine results (prefer OpenAI > Parser > Tesseract)
+  console.log('\n✅ Combining results...\n');
 
-    // Step 5: Parse items with smart parser
-    console.log('Step 5: Parsing with smart Brazilian receipt parser...');
-    const parsedItems = smartParseBrazilianReceipt(tesseractResult.text);
+  let finalResult = parserResult;
 
-    // Step 6: Merge metadata from OpenAI and Tesseract
-    let finalMetadata = tesseractMetadata;
-
-    if (openaiResult && openaiResult.metadata) {
-      console.log('Step 6: Merging metadata from OpenAI and Tesseract...');
-
-      // Prioritize OpenAI metadata, but fill in missing fields with Tesseract data
-      finalMetadata = {
-        establishment: openaiResult.metadata.establishment || tesseractMetadata.establishment,
-        cnpj: openaiResult.metadata.cnpj || tesseractMetadata.cnpj,
-        date: openaiResult.metadata.date || tesseractMetadata.date,
-        time: openaiResult.metadata.time || tesseractMetadata.time,
-        total: openaiResult.metadata.total || tesseractMetadata.total,
-        paymentMethod: {
-          type: openaiResult.metadata.paymentMethod?.type || tesseractMetadata.paymentMethod?.type,
-          details: openaiResult.metadata.paymentMethod?.details || tesseractMetadata.paymentMethod?.details
-        }
-      };
-    }
-
-    // Step 7: If OpenAI gave medium confidence, merge item results
-    let finalItems = parsedItems;
-    let finalMethod = 'tesseract+parser';
-    let finalConfidence = tesseractResult.confidence;
-
-    if (openaiResult && openaiResult.items.length > 0) {
-      console.log('Step 7: Merging OpenAI and Tesseract item results...');
-
-      // Use OpenAI items as primary, Tesseract as fallback
-      if (openaiResult.confidence === 'medium' && parsedItems.length > 0) {
-        finalItems = [...openaiResult.items, ...parsedItems];
-        finalMethod = 'hybrid';
-      } else if (openaiResult.items.length > parsedItems.length) {
-        finalItems = openaiResult.items;
-        finalMethod = 'openai-vision';
-        finalConfidence = 'medium';
-      }
-    }
-
-    // Remove duplicates from merged results
-    const uniqueItems = [];
-    const seen = new Set();
-
-    for (const item of finalItems) {
-      const key = `${item.description.toLowerCase()}_${item.amount.toFixed(2)}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        uniqueItems.push(item);
-      }
-    }
-
-    console.log(`✅ Final extraction: ${uniqueItems.length} items (method: ${finalMethod})`);
-    console.log(`✅ Metadata extracted:`, finalMetadata);
-
-    return {
-      items: uniqueItems,
-      metadata: finalMetadata,
-      method: finalMethod,
-      confidence: finalConfidence,
-      details: {
-        tesseract: {
-          confidence: tesseractResult.confidence,
-          textLength: tesseractResult.text.length,
-          rawText: tesseractResult.text.substring(0, 500) // First 500 chars for debugging
-        },
-        openai: openaiResult ? {
-          confidence: openaiResult.confidence,
-          itemsCount: openaiResult.items.length,
-          notes: openaiResult.notes
-        } : null
-      }
+  if (openaiResult && openaiResult.items.length > 0) {
+    console.log('✓ Using OpenAI result (highest quality)');
+    finalResult = openaiResult;
+  } else if (parserResult.items.length > 0) {
+    console.log('✓ Using parser result (fallback)');
+  } else {
+    console.log('✓ Using raw Tesseract text (last resort)');
+    finalResult = {
+      items: [],
+      metadata: {},
+      rawText: tesseractResult.text,
+      confidence: 'low',
+      method: 'tesseract-raw',
     };
-
-  } catch (error) {
-    console.error('❌ Advanced OCR error:', error);
-    throw error;
   }
+
+  return finalResult;
 }
 
 module.exports = {
@@ -605,6 +622,5 @@ module.exports = {
   preprocessImage,
   extractWithTesseract,
   extractWithOpenAI,
-  smartParseBrazilianReceipt,
-  extractMetadata
+  parseReceiptText,
 };
