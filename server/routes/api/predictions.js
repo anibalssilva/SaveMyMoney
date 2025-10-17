@@ -6,6 +6,10 @@ const axios = require('axios');
 // ML API URL
 const ML_API_URL = process.env.ML_API_URL || 'http://localhost:8000';
 
+// Log ML API URL on startup (hide sensitive parts)
+const displayUrl = ML_API_URL.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@');
+console.log(`🤖 ML API configured: ${displayUrl}`);
+
 // @route   POST api/predictions/predict
 // @desc    Get expense predictions for user
 // @access  Private
