@@ -220,58 +220,130 @@ router.post('/ocr', [auth, upload.single('receipt')], async (req, res) => {
     return res.status(400).json({ msg: 'No file uploaded.' });
   }
 
-  const worker = await createWorker('por');
+  const worker = await createWorker('por', 1, {
+    logger: m => console.log(m),
+  });
 
   try {
+    await worker.setParameters({
+      tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÁÂÃÄÅÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäåçèéêëìíîïñòóôõöùúûü ,.-R$%',
+      tessedit_pageseg_mode: '6', // Assume a single uniform block of text
+    });
+
     const {
       data: { text },
     } = await worker.recognize(req.file.buffer);
 
-    // Regex to find lines with a description and a BRL amount (e.g., "Product Name R$ 12,34")
-    const regex = /(.+?)\s+R\$\s*([\d,]+\.?\d{2})/g;
-    let match;
+    console.log('OCR Text extracted:', text);
+
     const transactionsToCreate = [];
+    const lines = text.split('\n');
 
-    // A more general regex for items that might not have R$
-    const generalRegex = /(.+?)\s+([\d,]+\.?\d{2})/g;
+    // Padrões comuns de cupom fiscal brasileiro
+    const patterns = [
+      // Padrão 1: PRODUTO + quantidade + valor unitário + valor total
+      // Ex: "ARROZ 1KG UN 1,000 x 12,99 12,99"
+      /^(.+?)\s+(?:UN|KG|PCT|UN|CX|LT|ML|G)\s+[\d,]+\s*[xX*]\s*[\d,]+\s+([\d,]+)$/,
 
-    const processMatches = (regex, text) => {
-        while ((match = regex.exec(text)) !== null) {
-            let description = match[1].trim();
-            // Clean up description from common OCR noise and irrelevant lines
-            if (description.length < 3 || description.toLowerCase().match(/total|subtotal|impostos|troco|desconto/)) {
-                continue;
-            }
-            
-            const amount = parseFloat(match[2].replace('.', '').replace(',', '.'));
+      // Padrão 2: PRODUTO + R$ + VALOR
+      // Ex: "FEIJAO PRETO R$ 8,99"
+      /^(.+?)\s+R\$?\s*([\d]+[,.]?\d{2})$/,
 
-            if (!isNaN(amount) && amount > 0) {
-                transactionsToCreate.push({
-                user: req.user.id,
-                description: description,
-                amount: amount,
-                category: 'OCR Upload', // Default category
-                type: 'expense',
-                });
-            }
+      // Padrão 3: PRODUTO + espaços + VALOR (sem R$)
+      // Ex: "CAFE PILAO          15,99"
+      /^(.+?)\s{2,}([\d]+[,.]?\d{2})$/,
+
+      // Padrão 4: PRODUTO + valor com ponto de milhar
+      // Ex: "NOTEBOOK DELL 1.299,99"
+      /^(.+?)\s+([\d]{1,3}\.[\d]{3}[,][\d]{2})$/,
+
+      // Padrão 5: Formato mais flexível (última tentativa)
+      /^(.+?)\s+([\d]+[,.][\d]{2})$/,
+    ];
+
+    // Palavras-chave para ignorar (não são produtos)
+    const ignoreKeywords = [
+      'total', 'subtotal', 'desconto', 'troco', 'pago', 'dinheiro', 'cartao',
+      'debito', 'credito', 'cpf', 'cnpj', 'data', 'hora', 'cupom', 'fiscal',
+      'valor', 'quantidade', 'qtd', 'cod', 'codigo', 'item', 'seq', 'icms',
+      'pis', 'cofins', 'issqn', 'nota', 'danfe', 'nfe', 'saldo', 'acrescimo'
+    ];
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+
+      // Ignorar linhas muito curtas ou vazias
+      if (trimmedLine.length < 3) continue;
+
+      // Ignorar linhas com palavras-chave
+      const lowerLine = trimmedLine.toLowerCase();
+      if (ignoreKeywords.some(keyword => lowerLine.includes(keyword))) {
+        continue;
+      }
+
+      // Tentar cada padrão
+      for (const pattern of patterns) {
+        const match = trimmedLine.match(pattern);
+
+        if (match) {
+          let description = match[1].trim();
+          let amountStr = match[2].trim();
+
+          // Limpar descrição
+          description = description
+            .replace(/^\d+\s*-?\s*/, '') // Remove número inicial
+            .replace(/\s+/g, ' ')        // Normaliza espaços
+            .trim();
+
+          // Validar descrição
+          if (description.length < 3 || description.length > 100) continue;
+          if (/^\d+$/.test(description)) continue; // Ignora se for só números
+
+          // Processar valor
+          amountStr = amountStr
+            .replace(/\./g, '')  // Remove pontos (separador de milhar)
+            .replace(',', '.');  // Troca vírgula por ponto
+
+          const amount = parseFloat(amountStr);
+
+          // Validar valor
+          if (isNaN(amount) || amount <= 0 || amount > 100000) continue;
+
+          // Evitar duplicatas
+          const isDuplicate = transactionsToCreate.some(
+            t => t.description === description && Math.abs(t.amount - amount) < 0.01
+          );
+
+          if (!isDuplicate) {
+            transactionsToCreate.push({
+              user: req.user.id,
+              description: description,
+              amount: amount,
+              category: 'OCR Upload',
+              type: 'expense',
+            });
+          }
+
+          break; // Parou no primeiro padrão que funcionou
         }
-    }
-
-    processMatches(regex, text);
-    // If the R$ specific regex found nothing, try a more general one
-    if(transactionsToCreate.length === 0){
-        processMatches(generalRegex, text);
+      }
     }
 
     if (transactionsToCreate.length === 0) {
-        return res.status(400).json({ msg: 'Could not extract any transactions from the image. Text found: ' + text });
+      return res.status(400).json({
+        msg: 'Não foi possível extrair itens do cupom. Tente tirar uma foto mais nítida, com boa iluminação e foco nos produtos e valores.',
+        debugText: text.substring(0, 500) // Primeiros 500 caracteres para debug
+      });
     }
 
     const createdTransactions = await Transaction.insertMany(transactionsToCreate);
     res.json(createdTransactions);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error during OCR processing.');
+    console.error('OCR Error:', err.message);
+    res.status(500).json({
+      msg: 'Erro ao processar a imagem. Tente novamente com uma foto mais clara.',
+      error: err.message
+    });
   } finally {
     await worker.terminate();
   }

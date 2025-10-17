@@ -26,7 +26,7 @@ const OcrUploadPage = () => {
   const capture = useCallback(() => {
     const capturedImageSrc = webcamRef.current.getScreenshot();
     if (capturedImageSrc) {
-        // Corrigir orientação da imagem
+        // Pré-processar imagem para melhorar OCR
         const img = new Image();
         img.onload = () => {
             const canvas = document.createElement('canvas');
@@ -36,17 +36,43 @@ const OcrUploadPage = () => {
             canvas.width = img.width;
             canvas.height = img.height;
 
-            // Desenhar imagem corrigida
+            // Desenhar imagem original
             ctx.drawImage(img, 0, 0);
 
-            // Converter para blob
+            // Aplicar filtros para melhorar OCR
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            // Converter para escala de cinza e aumentar contraste
+            for (let i = 0; i < data.length; i += 4) {
+                const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+
+                // Aumentar contraste (threshold adaptativo)
+                const contrast = 1.5;
+                const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+                const enhanced = factor * (gray - 128) + 128;
+
+                const value = Math.max(0, Math.min(255, enhanced));
+
+                data[i] = value;     // R
+                data[i + 1] = value; // G
+                data[i + 2] = value; // B
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+
+            // Aplicar sharpening
+            ctx.filter = 'contrast(1.2) brightness(1.1) saturate(0)';
+            ctx.drawImage(canvas, 0, 0);
+
+            // Converter para blob com alta qualidade
             canvas.toBlob((blob) => {
                 const correctedImageSrc = URL.createObjectURL(blob);
                 setImageSrc(correctedImageSrc);
 
                 const capturedFile = new File([blob], "webcam-receipt.jpeg", { type: "image/jpeg" });
                 setFile(capturedFile);
-            }, 'image/jpeg', 0.95);
+            }, 'image/jpeg', 0.98);
         };
         img.src = capturedImageSrc;
 
@@ -100,6 +126,25 @@ const OcrUploadPage = () => {
       <h2>📸 Scanner de Cupom Fiscal</h2>
       <p>Tire uma foto do cupom fiscal ou faça upload de uma imagem. Os itens serão extraídos automaticamente.</p>
 
+      {showCamera && (
+        <div style={{
+          background: '#e3f2fd',
+          padding: '1rem',
+          borderRadius: '8px',
+          marginBottom: '1rem',
+          border: '2px solid #2196F3'
+        }}>
+          <h4 style={{ margin: '0 0 0.5rem 0', color: '#1976d2' }}>💡 Dicas para melhor captura:</h4>
+          <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.9rem', color: '#424242' }}>
+            <li>Use boa iluminação (natural é melhor)</li>
+            <li>Mantenha o cupom reto e plano</li>
+            <li>Enquadre apenas a área dos produtos e valores</li>
+            <li>Evite sombras sobre o texto</li>
+            <li>Aguarde o foco automático ajustar</li>
+          </ul>
+        </div>
+      )}
+
       <div style={{ marginBottom: '1rem' }}>
         <button onClick={() => setShowCamera(!showCamera)} style={{ marginRight: '1rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>
           {showCamera ? '❌ Fechar Câmera' : '📷 Abrir Câmera'}
@@ -119,9 +164,14 @@ const OcrUploadPage = () => {
             width="100%"
             videoConstraints={{
               facingMode: facingMode,
-              width: { ideal: 1920 },
-              height: { ideal: 1080 },
-              aspectRatio: { ideal: 16/9 }
+              width: { min: 1920, ideal: 3840, max: 4096 },
+              height: { min: 1080, ideal: 2160, max: 2160 },
+              aspectRatio: { ideal: 16/9 },
+              advanced: [
+                { focusMode: 'continuous' },
+                { exposureMode: 'continuous' },
+                { whiteBalanceMode: 'continuous' }
+              ]
             }}
             screenshotQuality={1}
             style={{
