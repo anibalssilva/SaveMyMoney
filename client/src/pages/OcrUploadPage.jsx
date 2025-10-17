@@ -10,6 +10,7 @@ const OcrUploadPage = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [extractedTransactions, setExtractedTransactions] = useState([]);
+  const [selectedItems, setSelectedItems] = useState([]); // NEW: Track selected items
   const [extractedMetadata, setExtractedMetadata] = useState(null);
   const [isSaved, setIsSaved] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
@@ -24,6 +25,7 @@ const OcrUploadPage = () => {
       setFile(selectedFile);
       setImageSrc(URL.createObjectURL(selectedFile));
       setExtractedTransactions([]);
+      setSelectedItems([]);
       setExtractedMetadata(null);
       setIsSaved(false);
       setMessage('');
@@ -71,6 +73,7 @@ const OcrUploadPage = () => {
 
       setShowCamera(false);
       setExtractedTransactions([]);
+      setSelectedItems([]);
       setExtractedMetadata(null);
       setIsSaved(false);
       setMessage('');
@@ -81,9 +84,29 @@ const OcrUploadPage = () => {
     setFacingMode(prevMode => prevMode === 'user' ? 'environment' : 'user');
   };
 
+  // NEW: Toggle item selection
+  const toggleItemSelection = (index) => {
+    setSelectedItems(prev => {
+      if (prev.includes(index)) {
+        return prev.filter(i => i !== index);
+      } else {
+        return [...prev, index];
+      }
+    });
+  };
+
+  // NEW: Select/Deselect all items
+  const toggleSelectAll = () => {
+    if (selectedItems.length === extractedTransactions.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(extractedTransactions.map((_, index) => index));
+    }
+  };
+
   const handleSaveToDatabase = async () => {
-    if (extractedTransactions.length === 0) {
-      setMessage('❌ Nenhum item para salvar.');
+    if (selectedItems.length === 0) {
+      setMessage('❌ Selecione pelo menos um item para salvar.');
       return;
     }
 
@@ -96,8 +119,11 @@ const OcrUploadPage = () => {
     setMessage('💾 Salvando no banco de dados...');
 
     try {
+      // Only save selected items
+      const itemsToSave = selectedItems.map(index => extractedTransactions[index]);
+
       const { data } = await saveOcrTransactions({
-        items: extractedTransactions,
+        items: itemsToSave,
         metadata: extractedMetadata
       });
 
@@ -125,6 +151,7 @@ const OcrUploadPage = () => {
     setLoading(true);
     setMessage('Processando cupom fiscal...');
     setExtractedTransactions([]);
+    setSelectedItems([]);
     setExtractedMetadata(null);
 
     try {
@@ -133,10 +160,12 @@ const OcrUploadPage = () => {
       const metadata = data.metadata;
 
       setExtractedTransactions(items);
+      // Auto-select all items by default
+      setSelectedItems(items.map((_, index) => index));
       setExtractedMetadata(metadata);
       setIsSaved(false);
 
-      let successMsg = `✅ ${items.length} item(ns) extraído(s) com sucesso! Revise os dados e clique em "Salvar no Banco de Dados" para confirmar.`;
+      let successMsg = `✅ ${items.length} item(ns) extraído(s) com sucesso! Revise e selecione os itens que deseja salvar.`;
       if (metadata) {
         const methodNames = {
           'openai-vision': '🤖 IA Vision',
@@ -343,38 +372,69 @@ const OcrUploadPage = () => {
 
           {/* Items */}
           <div className="items-card">
-            <h4 className="items-header">✅ Itens Extraídos ({extractedTransactions.length})</h4>
+            <div className="items-card-header">
+              <h4 className="items-header">
+                ✅ Itens Extraídos ({extractedTransactions.length})
+              </h4>
+              <button
+                onClick={toggleSelectAll}
+                className="select-all-btn"
+                type="button"
+              >
+                {selectedItems.length === extractedTransactions.length ? '❌ Desmarcar Todos' : '✅ Selecionar Todos'}
+              </button>
+            </div>
+
             <p className="items-info">
-              ℹ️ A imagem foi removida. Revise os itens abaixo
+              ℹ️ Selecione os itens que deseja salvar no banco de dados ({selectedItems.length} selecionado{selectedItems.length !== 1 ? 's' : ''})
             </p>
 
             <ul className="items-list">
               {extractedTransactions.map((t, index) => (
-                <li key={index} className="item-row">
-                  <span className="item-description">{t.description}</span>
+                <li
+                  key={index}
+                  className={`item-row ${selectedItems.includes(index) ? 'item-row-selected' : ''}`}
+                  onClick={() => toggleItemSelection(index)}
+                >
+                  <div className="item-checkbox-wrapper">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.includes(index)}
+                      onChange={() => toggleItemSelection(index)}
+                      className="item-checkbox"
+                    />
+                    <span className="item-description">{t.description}</span>
+                  </div>
                   <span className="item-amount">R$ {t.amount.toFixed(2)}</span>
                 </li>
               ))}
             </ul>
 
             <div className="total-summary">
-              <span className="total-label">Total dos Itens:</span>
+              <div>
+                <span className="total-label">Total Selecionado:</span>
+                <span className="total-items-count">
+                  ({selectedItems.length} de {extractedTransactions.length} itens)
+                </span>
+              </div>
               <span className="total-value">
-                R$ {extractedTransactions.reduce((sum, t) => sum + t.amount, 0).toFixed(2)}
+                R$ {selectedItems.reduce((sum, index) => sum + extractedTransactions[index].amount, 0).toFixed(2)}
               </span>
             </div>
 
             {/* Save Button */}
             <button
               onClick={handleSaveToDatabase}
-              disabled={saving || isSaved}
-              className={`save-button ${isSaved ? 'save-button-saved' : saving ? 'save-button-saving' : 'save-button-active'}`}
+              disabled={saving || isSaved || selectedItems.length === 0}
+              className={`save-button ${isSaved ? 'save-button-saved' : saving ? 'save-button-saving' : selectedItems.length === 0 ? 'save-button-disabled' : 'save-button-active'}`}
             >
               {isSaved
                 ? '✅ Salvo no Banco de Dados'
                 : saving
                   ? '💾 Salvando...'
-                  : '💾 Salvar no Banco de Dados (MongoDB)'}
+                  : selectedItems.length === 0
+                    ? '⚠️ Selecione itens para salvar'
+                    : `💾 Salvar ${selectedItems.length} Item(ns) no MongoDB`}
             </button>
           </div>
         </div>

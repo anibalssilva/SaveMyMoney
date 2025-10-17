@@ -342,15 +342,33 @@ function smartParseBrazilianReceipt(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   const items = [];
 
-  // Keywords to ignore (not products)
+  // Keywords to ignore (not products) - ENHANCED
   const ignoreKeywords = [
-    'total', 'subtotal', 'desconto', 'troco', 'pago', 'dinheiro', 'cartao',
-    'debito', 'credito', 'cpf', 'cnpj', 'data', 'hora', 'cupom', 'fiscal',
-    'valor', 'quantidade', 'qtd', 'cod', 'codigo', 'item', 'seq', 'icms',
-    'pis', 'cofins', 'issqn', 'nota', 'danfe', 'nfe', 'saldo', 'acrescimo',
-    'sat', 'migre', 'nfc', 'chave', 'token', 'vendedor', 'operador', 'caixa',
-    'endereco', 'telefone', 'cnae', 'ie', 'im', 'extrato', 'cupom fiscal',
-    'informacoes', 'consumidor', 'aproximado', 'tributos'
+    // Totais e valores calculados
+    'total', 'subtotal', 'desconto', 'troco', 'pago', 'recebido', 'saldo',
+    'acrescimo', 'taxa', 'servico', 'gorjeta', 'valor total', 'v.total', 'v total',
+    'tot', 'soma', 'liquido', 'bruto',
+
+    // Formas de pagamento
+    'dinheiro', 'cartao', 'debito', 'credito', 'pix', 'especie', 'boleto',
+
+    // Informações fiscais
+    'cpf', 'cnpj', 'data', 'hora', 'cupom', 'fiscal', 'nfe', 'nota', 'danfe',
+    'sat', 'migre', 'nfc', 'chave', 'token', 'cfe', 'extrato',
+
+    // Metadados
+    'quantidade', 'qtd', 'cod', 'codigo', 'item', 'seq', 'un', 'descricao',
+
+    // Impostos
+    'icms', 'pis', 'cofins', 'issqn', 'iss', 'imposto', 'tributo', 'aproximado',
+
+    // Informações da loja
+    'vendedor', 'operador', 'caixa', 'endereco', 'telefone', 'cnae', 'ie', 'im',
+    'estabelecimento', 'loja', 'filial', 'site', 'www',
+
+    // Outros
+    'informacoes', 'consumidor', 'obrigado', 'volte sempre', 'atendimento',
+    'observacao', 'obs', 'servicos', 'contribuinte', 'atenção', 'atencao'
   ];
 
   // Enhanced patterns for Brazilian receipts
@@ -387,6 +405,13 @@ function smartParseBrazilianReceipt(text) {
     // Skip lines with ignore keywords
     const lowerLine = line.toLowerCase();
     if (ignoreKeywords.some(keyword => lowerLine.includes(keyword))) {
+      continue;
+    }
+
+    // Extra validation: Skip lines that START with common non-product words
+    const startsWithInvalid = /^(total|subtotal|desconto|troco|pago|r\$|rs|\d+\s*r\$)/i.test(line);
+    if (startsWithInvalid) {
+      console.log(`[SmartParser] Skipping line starting with total/payment keyword: "${line}"`);
       continue;
     }
 
