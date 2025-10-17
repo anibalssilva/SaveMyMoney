@@ -146,16 +146,26 @@ async function extractWithTesseract(imageBuffer) {
  * Enhanced prompt to extract individual products, not just payment totals
  */
 async function extractWithOpenAI(imageBuffer) {
+  console.log('[OpenAI] Initializing...');
+  console.log('[OpenAI] API Key present:', !!process.env.OPENAI_API_KEY);
+  console.log('[OpenAI] API Key length:', process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.length : 0);
+  console.log('[OpenAI] API Key preview:', process.env.OPENAI_API_KEY ? `${process.env.OPENAI_API_KEY.substring(0, 10)}...` : 'NONE');
+
   initializeOpenAI();
 
   if (!openai) {
-    console.log('[OpenAI] API key not configured, skipping...');
+    console.error('[OpenAI] ❌ API key not configured! Set OPENAI_API_KEY environment variable.');
+    console.error('[OpenAI] ❌ Falling back to Tesseract + Parser (lower accuracy)');
+    console.error('[OpenAI] 📖 See OPENAI_SETUP.md for configuration instructions');
     return null;
   }
+
+  console.log('[OpenAI] ✓ OpenAI client initialized successfully');
 
   try {
     // Convert buffer to base64
     const base64Image = imageBuffer.toString('base64');
+    console.log('[OpenAI] Image converted to base64, size:', Math.round(base64Image.length / 1024), 'KB');
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o', // GPT-4o with vision - best for OCR
@@ -418,6 +428,8 @@ Agora analise a imagem fornecida e retorne o JSON com TODOS os produtos.`
 
     console.log(`[OpenAI] Validation: ${data.items?.length || 0} items → ${validItems.length} valid items`);
 
+    console.log(`[OpenAI] ✅ Successfully extracted ${validItems.length} items`);
+
     return {
       items: validItems,
       metadata: data.metadata || {},
@@ -426,7 +438,23 @@ Agora analise a imagem fornecida e retorne o JSON com TODOS os produtos.`
       method: 'openai',
     };
   } catch (error) {
-    console.error('[OpenAI] Error:', error);
+    console.error('[OpenAI] ❌ Error during extraction:', error.message);
+    console.error('[OpenAI] Error details:', {
+      name: error.name,
+      status: error.status,
+      code: error.code,
+      type: error.type
+    });
+
+    // Check for specific error types
+    if (error.code === 'insufficient_quota') {
+      console.error('[OpenAI] ❌ Insufficient quota! Add credits: https://platform.openai.com/settings/organization/billing');
+    } else if (error.code === 'invalid_api_key') {
+      console.error('[OpenAI] ❌ Invalid API key! Check your OPENAI_API_KEY environment variable');
+    } else if (error.status === 429) {
+      console.error('[OpenAI] ❌ Rate limit exceeded! Wait a moment and try again');
+    }
+
     return null;
   }
 }
