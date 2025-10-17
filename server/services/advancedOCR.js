@@ -748,48 +748,52 @@ async function parseReceiptText(text) {
 
 /**
  * Main function - orchestrates all OCR methods
+ * PRIORITY: GPT-4o Vision FIRST (direct), Tesseract as fallback only
  */
 async function extractReceiptData(imageBuffer) {
   console.log('\n🔍 Starting Advanced OCR extraction...\n');
+  console.log('📋 Extraction strategy: GPT-4o Vision (primary) → Tesseract + Parser (fallback)\n');
 
-  // Step 1: Preprocess image
-  console.log('[1/4] Preprocessing image...');
-  const processedImage = await preprocessImage(imageBuffer);
-
-  // Step 2: Extract with Tesseract
-  console.log('[2/4] Running Tesseract OCR...');
-  const tesseractResult = await extractWithTesseract(processedImage);
-
-  // Step 3: Extract with OpenAI (if available)
-  console.log('[3/4] Running OpenAI Vision...');
+  // STEP 1: Try GPT-4o Vision FIRST (if API key is configured)
+  console.log('[1/2] 🤖 Attempting GPT-4o Vision extraction...');
   const openaiResult = await extractWithOpenAI(imageBuffer);
 
-  // Step 4: Parse Tesseract text as fallback
-  console.log('[4/4] Parsing text with smart parser...');
-  const parserResult = await parseReceiptText(tesseractResult.text);
-
-  // Combine results (prefer OpenAI > Parser > Tesseract)
-  console.log('\n✅ Combining results...\n');
-
-  let finalResult = parserResult;
-
-  if (openaiResult && openaiResult.items.length > 0) {
-    console.log('✓ Using OpenAI result (highest quality)');
-    finalResult = openaiResult;
-  } else if (parserResult.items.length > 0) {
-    console.log('✓ Using parser result (fallback)');
-  } else {
-    console.log('✓ Using raw Tesseract text (last resort)');
-    finalResult = {
-      items: [],
-      metadata: {},
-      rawText: tesseractResult.text,
-      confidence: 'low',
-      method: 'tesseract-raw',
-    };
+  if (openaiResult && openaiResult.items && openaiResult.items.length > 0) {
+    console.log(`\n✅ SUCCESS: GPT-4o Vision extracted ${openaiResult.items.length} items`);
+    console.log('✓ Using GPT-4o Vision result (highest quality - no Tesseract needed)');
+    console.log(`✅ Extraction complete: ${openaiResult.items.length} items found`);
+    console.log(`📊 Method: ${openaiResult.method}, Confidence: ${openaiResult.confidence}\n`);
+    return openaiResult;
   }
 
-  return finalResult;
+  // STEP 2: Fallback to Tesseract + Parser (only if OpenAI failed or unavailable)
+  console.log('\n⚠️  GPT-4o Vision unavailable or failed, falling back to Tesseract + Parser...\n');
+
+  console.log('[2/2] 📝 Preprocessing image for Tesseract...');
+  const processedImage = await preprocessImage(imageBuffer);
+
+  console.log('[2/2] 🔍 Running Tesseract OCR...');
+  const tesseractResult = await extractWithTesseract(processedImage);
+
+  console.log('[2/2] 🧩 Parsing text with enhanced parser...');
+  const parserResult = await parseReceiptText(tesseractResult.text);
+
+  if (parserResult.items.length > 0) {
+    console.log(`\n✅ Tesseract + Parser extracted ${parserResult.items.length} items`);
+    console.log(`✅ Extraction complete: ${parserResult.items.length} items found`);
+    console.log(`📊 Method: ${parserResult.method}, Confidence: ${parserResult.confidence}\n`);
+    return parserResult;
+  }
+
+  // Last resort: return raw text
+  console.log('\n❌ All extraction methods failed - returning raw Tesseract text\n');
+  return {
+    items: [],
+    metadata: {},
+    rawText: tesseractResult.text,
+    confidence: 'low',
+    method: 'tesseract-raw',
+  };
 }
 
 module.exports = {
