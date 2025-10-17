@@ -164,40 +164,65 @@ async function extractWithOpenAI(imageBuffer) {
           content: [
             {
               type: 'text',
-              text: `Você é um especialista em extração de dados de cupons fiscais brasileiros (NFC-e, SAT, DANFE).
+              text: `Você é um especialista em OCR de cupons fiscais brasileiros (NFC-e, SAT, DANFE).
 
-🎯 SUA TAREFA: Analise a imagem do cupom fiscal e extraia SOMENTE os produtos comprados com seus valores.
+🎯 TAREFA: Extrair CADA PRODUTO INDIVIDUAL do cupom com seu respectivo VALOR UNITÁRIO/TOTAL.
 
-⚠️ REGRAS CRÍTICAS:
-1. **PRODUTOS**: Extraia APENAS itens que sejam PRODUTOS COMPRADOS (com descrição + valor)
-   - ✅ CORRETO: "BISN SEVEN BOYS 300G" → R$ 5.49
-   - ✅ CORRETO: "FRAL HUGGIES MAXIMA PROT C56" → R$ 73.47
-   - ❌ ERRADO: NÃO extraia "CNPJ", "Valor a Pagar", "Data", "NFC-e", etc como produtos!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ REGRAS ABSOLUTAS - LEIA COM ATENÇÃO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-2. **VALORES**: Use o valor TOTAL do item (quantidade × valor unitário)
-   - Se mostra "1UN × 5,49 = 5,49" → use 5.49
-   - Se mostra "2UN × 10,00 = 20,00" → use 20.00
+1️⃣ **IDENTIFICAÇÃO DE PRODUTOS**
 
-3. **FORMATO DE NÚMEROS**:
-   - Converta vírgula para ponto: "73,47" → 73.47
-   - Remova "R$" e espaços: "R$ 78,96" → 78.96
+   Os produtos em cupons fiscais brasileiros aparecem em uma destas estruturas:
 
-4. **FORMA DE PAGAMENTO**:
-   - "CARTAO DE CREDITO" ou "CREDITO" → "credit"
-   - "CARTAO DE DEBITO" ou "DEBITO" → "debit"
-   - "CARTEIRA DIGITAL" → "other"
-   - "PIX" → "pix"
-   - "DINHEIRO" → "cash"
+   Estrutura A (código + descrição em linha separada do valor):
+   ┌─────────────────────────────────────────────────┐
+   │ 7891193010012 BISN SEVEN BOYS 300G TRAD        │
+   │                      1UN   5,49        5,49     │
+   └─────────────────────────────────────────────────┘
 
-5. **DATA**: Formato DD/MM/YYYY (ex: "16/10/2025")
+   Estrutura B (descrição + valor na mesma linha):
+   ┌─────────────────────────────────────────────────┐
+   │ COPO QUENCHER 420ML      1 PC X 49,90   49,90  │
+   └─────────────────────────────────────────────────┘
 
----
+   Estrutura C (descrição em linha, quantidade/valor abaixo):
+   ┌─────────────────────────────────────────────────┐
+   │ FRAL HUGGIES MAXIMA PROT C56 XG                │
+   │ 1UN  73,47  73,47                              │
+   └─────────────────────────────────────────────────┘
 
-📋 EXEMPLO DE CUPOM REAL:
+2️⃣ **O QUE EXTRAIR**
+   ✅ Nome do produto (sem código de barras)
+   ✅ Valor FINAL do item (coluna VL.TOTAL ou último valor)
+   ✅ Quantidade (se disponível)
+
+3️⃣ **O QUE IGNORAR COMPLETAMENTE**
+   ❌ Linhas que contenham: "CARTEIRA DIGITAL", "DEBITO", "CREDITO", "PIX", "DINHEIRO"
+   ❌ Linhas que contenham: "PAGAMENTO", "TOTAL", "SUBTOTAL", "VALOR A PAGAR"
+   ❌ Linhas que contenham: "CNPJ", "CPF", "EMITENTE", "CONSUMIDOR"
+   ❌ Linhas que contenham: "DATA", "HORA", "NFC-e", "SAT", "SERIE"
+   ❌ Números de código de barras isolados (13 dígitos sem descrição)
+
+4️⃣ **VALIDAÇÃO**
+   ⚠️ Se você extraiu "CARTEIRA DIGITAL" como produto → ESTÁ ERRADO!
+   ⚠️ Se você extraiu "FORMA PAGAMENTO" como produto → ESTÁ ERRADO!
+   ⚠️ Se a soma dos itens não bate com o total do cupom → REVISE!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 EXEMPLO COMPLETO DE CUPOM REAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+COMERCIAL ZARAGOZA IMP EXP LTDA
+CNPJ 05.868.574/0020-62
+16/10/25 14:02:02
 
 CODIGO DESCRICAO                    QTDE  UN  VL.UNIT  VL.TOTAL
+
 7891193010012 BISN SEVEN BOYS 300G TRAD
                                      1UN   5,49        5,49
+
 7896007552825 FRAL HUGGIES MAXIMA PROT C56 XG
                                      1UN  73,47       73,47
 
@@ -206,14 +231,24 @@ Valor a Pagar R$                                      78,96
 FORMA PAGAMENTO                              VALOR PAGO
 CARTEIRA DIGITAL                                     78,96
 
----
+NFC-e n. 000002083 Serie 406 16/10/2025
 
-✅ JSON CORRETO PARA ESTE EXEMPLO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ JSON CORRETO (2 PRODUTOS, NÃO 1!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {
   "items": [
-    {"description": "BISN SEVEN BOYS 300G TRAD", "amount": 5.49, "quantity": 1},
-    {"description": "FRAL HUGGIES MAXIMA PROT C56 XG", "amount": 73.47, "quantity": 1}
+    {
+      "description": "BISN SEVEN BOYS 300G TRAD",
+      "amount": 5.49,
+      "quantity": 1
+    },
+    {
+      "description": "FRAL HUGGIES MAXIMA PROT C56 XG",
+      "amount": 73.47,
+      "quantity": 1
+    }
   ],
   "metadata": {
     "establishment": "COMERCIAL ZARAGOZA IMP EXP LTDA",
@@ -227,23 +262,36 @@ CARTEIRA DIGITAL                                     78,96
     }
   },
   "confidence": "high",
-  "notes": "NFC-e n. 000002083 Série 406"
+  "notes": "2 itens extraídos, total validado (5.49 + 73.47 = 78.96)"
 }
 
----
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ JSON ERRADO (O QUE NÃO FAZER!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🚫 O QUE **NÃO** EXTRAIR COMO PRODUTO:
-- CNPJ do estabelecimento
-- Endereço da loja
-- Data/hora
-- "Valor a Pagar"
-- "Forma de Pagamento"
-- "Total de Itens"
-- Números de série, protocolo, SAT
-- QR Code, códigos de barras
-- Informações fiscais
+{
+  "items": [
+    {"description": "CARTEIRA DIGITAL", "amount": 78.96}  ← ERRADO!
+  ]
+}
 
-📸 Retorne APENAS o JSON, sem texto adicional.`
+Por quê é errado? "CARTEIRA DIGITAL" é forma de PAGAMENTO, NÃO é um produto!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 PROCESSO DE EXTRAÇÃO:
+
+1. Procure a seção de produtos (geralmente após "CODIGO DESCRICAO" ou similar)
+2. Identifique cada linha que contém nome de produto
+3. Encontre o valor correspondente (pode estar na linha seguinte)
+4. Ignore completamente seções de pagamento, totais, e informações fiscais
+5. Valide: soma dos items = total do cupom (aprox.)
+
+📤 FORMATO DA RESPOSTA:
+- Retorne APENAS o JSON
+- Sem texto adicional antes ou depois
+- Use números com ponto decimal (não vírgula)
+- Campo "notes" deve conter contagem de itens e validação de soma`
             },
             {
               type: 'image_url',
@@ -269,8 +317,49 @@ CARTEIRA DIGITAL                                     78,96
     const data = JSON.parse(jsonMatch[0]);
     console.log('[OpenAI] Parsed data:', JSON.stringify(data, null, 2));
 
+    // Validate and filter items - remove non-product entries
+    const invalidKeywords = [
+      'CARTEIRA DIGITAL', 'DEBITO', 'CREDITO', 'PIX', 'DINHEIRO',
+      'PAGAMENTO', 'TOTAL', 'SUBTOTAL', 'VALOR A PAGAR', 'FORMA DE PAGAMENTO',
+      'CNPJ', 'CPF', 'EMITENTE', 'CONSUMIDOR', 'ENDERECO',
+      'DATA', 'HORA', 'NFC-e', 'SAT', 'SERIE', 'PROTOCOLO',
+      'VENDEDOR', 'OPERADOR', 'CAIXA'
+    ];
+
+    const validItems = (data.items || []).filter(item => {
+      const desc = item.description.toUpperCase();
+
+      // Check if item description contains any invalid keyword
+      const hasInvalidKeyword = invalidKeywords.some(keyword => desc.includes(keyword));
+
+      // Check if description is too short (likely not a real product)
+      const isTooShort = item.description.trim().length < 3;
+
+      // Check if amount is reasonable (between 0.01 and 50000)
+      const hasValidAmount = item.amount > 0.01 && item.amount < 50000;
+
+      if (hasInvalidKeyword) {
+        console.log(`[OpenAI] Filtered out invalid item: "${item.description}" (contains payment/metadata keyword)`);
+        return false;
+      }
+
+      if (isTooShort) {
+        console.log(`[OpenAI] Filtered out invalid item: "${item.description}" (too short)`);
+        return false;
+      }
+
+      if (!hasValidAmount) {
+        console.log(`[OpenAI] Filtered out invalid item: "${item.description}" (invalid amount: ${item.amount})`);
+        return false;
+      }
+
+      return true;
+    });
+
+    console.log(`[OpenAI] Validation: ${data.items?.length || 0} items → ${validItems.length} valid items`);
+
     return {
-      items: data.items || [],
+      items: validItems,
       metadata: data.metadata || {},
       confidence: data.confidence || 'medium',
       notes: data.notes || '',
