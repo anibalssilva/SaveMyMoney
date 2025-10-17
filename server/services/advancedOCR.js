@@ -472,9 +472,12 @@ async function parseReceiptText(text) {
     const line = lines[i];
     const nextLine = lines[i + 1] || '';
 
+    console.log(`[Parser] Line ${i}: "${line}"`);
+
     // Skip blacklisted lines
     const lineUpper = line.toUpperCase();
     if (blacklist.some(keyword => lineUpper.includes(keyword))) {
+      console.log(`[Parser] Skipping blacklisted line: "${line}"`);
       i++;
       continue;
     }
@@ -491,22 +494,39 @@ async function parseReceiptText(text) {
     // Example:
     //   "7891193010012 BISN SEVEN BOYS 300G TRAD"
     //   "                     1UN   5,49        5,49"
-    if (nextLine && /^\s*\d+\s*(?:UN|PC|KG|L|ML|G)\s+[\d,\.]+\s+[\d,\.]+/.test(nextLine)) {
-      // Extract product name (remove leading numbers/barcodes)
-      let description = line.replace(/^\d+\s+/, '').trim();
-      description = description.replace(/^\d{13}\s+/, '').trim(); // Remove EAN-13 barcode
+    // Check if current line looks like a product (has letters, might have barcode)
+    // AND next line has price pattern (quantity + unit + prices)
+    const looksLikeProduct = /[A-Za-z]{3,}/.test(line) && !/^(TOTAL|SUBTOTAL|PAGAMENTO|FORMA)/i.test(line);
 
-      // Extract value from next line (last number)
-      const valueMatch = nextLine.match(/([\d]+[,\.][\d]{2})\s*$/);
-      if (valueMatch && description.length > 3) {
-        const amount = parseFloat(valueMatch[1].replace(',', '.'));
+    if (looksLikeProduct && nextLine) {
+      // More flexible price line detection - allows various spacing
+      const nextLineHasPrice = /\d+\s*(?:UN|PC|KG|L|ML|G|PCT|un|pc|kg)\s+[\d,\.]+\s+[\d,\.]+/.test(nextLine);
 
-        if (amount > 0.01 && amount < 50000) {
-          console.log(`[Parser] Found item (multi-line): "${description}" = R$ ${amount}`);
-          items.push({ description, amount, quantity: 1 });
-          matched = true;
-          i += 2; // Skip next line
-          continue;
+      if (nextLineHasPrice) {
+        console.log(`[Parser] Detected multi-line product pattern`);
+
+        // Extract product name (remove leading numbers/barcodes)
+        let description = line.replace(/^\d+\s+/, '').trim();
+        description = description.replace(/^\d{13}\s+/, '').trim(); // Remove EAN-13 barcode
+        description = description.replace(/^\d{12}\s+/, '').trim(); // Remove EAN-12 barcode
+        description = description.replace(/^\d{8}\s+/, '').trim(); // Remove EAN-8 barcode
+
+        // Extract value from next line (last number with 2 decimals)
+        const valueMatch = nextLine.match(/([\d]+[,\.][\d]{2})\s*$/);
+        if (valueMatch && description.length > 3 && /[A-Za-z]{3,}/.test(description)) {
+          const amount = parseFloat(valueMatch[1].replace(',', '.'));
+
+          if (amount > 0.01 && amount < 50000) {
+            console.log(`[Parser] ✓ Found item (multi-line): "${description}" = R$ ${amount}`);
+            items.push({ description, amount, quantity: 1 });
+            matched = true;
+            i += 2; // Skip next line (it's the price line)
+            continue;
+          } else {
+            console.log(`[Parser] ✗ Amount out of range: ${amount}`);
+          }
+        } else {
+          console.log(`[Parser] ✗ No valid value or description too short: "${description}"`);
         }
       }
     }
