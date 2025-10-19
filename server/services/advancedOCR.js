@@ -172,25 +172,58 @@ async function extractWithOpenAI(imageBuffer) {
       messages: [
         {
           role: 'system',
-          content: `Você é um extrator de itens de cupons fiscais brasileiros (NFC-e/SAT).
-            Responda apenas com JSON válido no esquema fornecido.
-            Regras (DEVE):
+          content: `Você é um extrator PRECISO de cupons fiscais brasileiros (NFC-e/SAT).
 
-            Extrair todos os produtos com description, quantity (pode ser decimal), unit_price e total.
+REGRAS CRÍTICAS:
 
-            Nunca extrair formas de pagamento, totais/subtotais, tributos, chaves, protocolos, mensagens.
+1. EXTRAÇÃO DE ITENS:
+   - Extraia TODOS os produtos (description, quantity, unit_price, total)
+   - Ignore: pagamentos, totais/subtotais, tributos, chaves, protocolos
+   - Una linhas quebradas (código/descrição podem estar em linhas separadas)
+   - Quantidade pode ser decimal (ex: 0.418 KG)
 
-            Unir itens em linhas quebradas (código/descrição/quantidades em linhas diferentes).
+2. LEITURA DE VALORES (CRÍTICO):
+   - O valor TOTAL do item é o ÚLTIMO número monetário da linha
+   - Formato brasileiro: use vírgula decimal → converta para ponto (29,90 → 29.90)
+   - NÃO confunda preço unitário com total
+   - Exemplo: "1 UN x 29,90 F 29,90" → total = 29.90
+   - Exemplo: "3 UN x 2,99 F 8,97" → total = 8.97 (NÃO 2.99)
+   - Se houver 2 valores na linha, o ÚLTIMO é o total
 
-            Considerar que o último valor monetário da linha do item é o total do item.
+3. VALIDAÇÃO INTERNA:
+   - Verifique: quantity × unit_price = total (±0.05 tolerância)
+   - Se não bater, use o valor mais à direita como total
+   - Conte quantos itens você extraiu
+   - Compare com "QTD. TOTAL DE ITENS" do cupom (se presente)
 
-            Normalizar números pt-BR → ponto (ex.: 12,90 → 12.90; 1.234,56 → 1234.56).
+4. NORMALIZAÇÃO:
+   - pt-BR → EN: 12,90 → 12.90 | 1.234,56 → 1234.56
+   - Remova espaços extras das descrições
+   - NÃO invente dados: se faltar, use null
 
-            Não inventar: se faltar algum campo, use null ou omita.
+5. SAÍDA JSON:
+{
+  "items": [
+    {
+      "description": "NOME PRODUTO",
+      "quantity": 1,
+      "unit_price": 29.90,
+      "total": 29.90
+    }
+  ],
+  "metadata": {
+    "date": "DD/MM/YYYY" ou null,
+    "total": 445.97
+  },
+  "checks": {
+    "sum_items": 445.97,
+    "declared_total": 445.97,
+    "delta": 0.00,
+    "item_count": 34
+  }
+}
 
-            Validação: some total dos itens e compare com o total do cupom (quando presente). Informe checks.sum_items, checks.declared_total, checks.delta. Aceite |delta| ≤ 0.05.
-
-            Saída exclusivamente o JSON final, sem explicações.`
+RESPONDA APENAS COM O JSON. SEM EXPLICAÇÕES.`
         },
         {
           role: 'user',
@@ -754,10 +787,35 @@ async function extractReceiptData(imageBuffer) {
     methodUsed: finalResult.method,
   };
 
+  // Ensure metadata exists
+  if (!finalResult.metadata) {
+    finalResult.metadata = {};
+  }
+
+  // Extract or set date
+  if (!finalResult.metadata.date && parserResult.metadata && parserResult.metadata.date) {
+    finalResult.metadata.date = parserResult.metadata.date;
+    console.log(`[Hybrid] 📅 Date from receipt: ${parserResult.metadata.date}`);
+  }
+
+  // If still no date, use today's date
+  if (!finalResult.metadata.date) {
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const year = today.getFullYear();
+    finalResult.metadata.date = `${day}/${month}/${year}`;
+    console.log(`[Hybrid] 📅 No date found in receipt, using extraction date: ${finalResult.metadata.date}`);
+  }
+
+  // Set editable flag (frontend can use this to enable editing)
+  finalResult.editable = true;
+
   console.log(`\n✅ HYBRID EXTRACTION COMPLETE`);
   console.log(`📊 Final result: ${finalResult.items.length} items`);
   console.log(`📊 Method: ${finalResult.method}`);
-  console.log(`📊 Confidence: ${finalResult.confidence}\n`);
+  console.log(`📊 Confidence: ${finalResult.confidence}`);
+  console.log(`📊 Date: ${finalResult.metadata.date || 'N/A'}\n`);
 
   return finalResult;
 }
@@ -767,11 +825,11 @@ async function extractReceiptData(imageBuffer) {
  */
 function extractExpectedItemCount(text) {
   const itemCountPatterns = [
-    /QTD\.?\s*TOTAL\s*DE\s*ITENS\s*(\d+)/i,
-    /(?:QTD|QTDE|QUANTIDADE)\.?\s*TOTAL\s*(?:DE\s*)?(?:ITENS)?[:\s]+(\d+)/i,
-    /TOTAL\s*(?:DE\s*)?ITENS[:\s]+(\d+)/i,
-    /(\d+)\s+(?:ITENS|PRODUTOS)\s*$/i,
-    /(?:ITENS|PRODUTOS)[:\s]+(\d+)/i
+    /QTD\.?\s*TOTAL\s*DE\s*ITENS\s*0*(\d{1,3})/i,  // Matches "034" → 34
+    /(?:QTD|QTDE|QUANTIDADE)\.?\s*TOTAL\s*(?:DE\s*)?(?:ITENS)?[:\s]+0*(\d{1,3})/i,
+    /TOTAL\s*(?:DE\s*)?ITENS[:\s]+0*(\d{1,3})/i,
+    /(\d{1,3})\s+(?:ITENS|PRODUTOS)\s*$/i,
+    /(?:ITENS|PRODUTOS)[:\s]+0*(\d{1,3})/i
   ];
 
   const lines = text.split('\n');
@@ -782,8 +840,8 @@ function extractExpectedItemCount(text) {
       for (const pattern of itemCountPatterns) {
         const match = line.match(pattern);
         if (match) {
-          const count = parseInt(match[1]);
-          console.log(`[ExpectedCount] ✓ Found expected count: ${count}`);
+          const count = parseInt(match[1], 10); // Parse with base 10, removes leading zeros
+          console.log(`[ExpectedCount] ✓ Found expected count: ${count} (raw: "${match[1]}")`);
           return count;
         }
       }
