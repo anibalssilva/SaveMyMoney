@@ -18,6 +18,7 @@ const OcrUploadPage = () => {
   const [facingMode, setFacingMode] = useState('environment');
   const [categories, setCategories] = useState([]); // All available categories
   const [selectedCategory, setSelectedCategory] = useState(null); // Selected category for all items
+  const [subcategories, setSubcategories] = useState([]); // Subcategories for selected category
   const [editingItem, setEditingItem] = useState(null); // Index of item being edited
 
   const webcamRef = useRef(null);
