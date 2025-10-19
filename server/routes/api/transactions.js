@@ -8,7 +8,7 @@ const xlsx = require('xlsx');
 const multer = require('multer');
 const { createWorker } = require('tesseract.js');
 const pdf = require('pdf-parse');
-const { extractReceiptData } = require('../../services/advancedOCR');
+const { extractReceiptData, getExpenseCategories } = require('../../services/advancedOCR');
 
 const Transaction = require('../../models/Transaction');
 const Budget = require('../../models/Budget');
@@ -226,6 +226,19 @@ router.get('/export', auth, async (req, res) => {
 // Multer setup for file uploads
 const upload = multer({ storage: multer.memoryStorage() });
 
+// @route   GET api/transactions/categories
+// @desc    Get all available expense categories
+// @access  Private
+router.get('/categories', auth, (req, res) => {
+  try {
+    const categories = getExpenseCategories();
+    res.json(categories);
+  } catch (err) {
+    console.error('❌ Error fetching categories:', err.message);
+    res.status(500).json({ msg: 'Erro ao buscar categorias' });
+  }
+});
+
 // @route   POST api/transactions/ocr
 // @desc    Extract data from receipt image (does NOT save to database)
 // @access  Private
@@ -258,10 +271,14 @@ router.post('/ocr', [auth, upload.single('receipt')], async (req, res) => {
     }
 
     // Format items for frontend (NOT saving to database yet)
+    // Use auto-detected category for all items
+    const autoCategory = result.metadata.category || { id: 'outras', name: 'Outras eventuais', emoji: '💡' };
+
     const extractedItems = result.items.map(item => ({
       description: item.description,
       amount: item.amount,
-      category: 'OCR Upload',
+      category: autoCategory.name,
+      categoryId: autoCategory.id,
       type: 'expense'
     }));
 
@@ -276,8 +293,13 @@ router.post('/ocr', [auth, upload.single('receipt')], async (req, res) => {
         totalAmount: extractedItems.reduce((sum, t) => sum + t.amount, 0),
         method: result.method,
         confidence: result.confidence,
-        extractionDetails: result.details
-      }
+        extractionDetails: result.details,
+        // Auto-detected category
+        autoCategory: autoCategory,
+        establishmentName: result.metadata.establishmentName
+      },
+      // Include editable flag for frontend
+      editable: result.editable
     });
 
   } catch (err) {

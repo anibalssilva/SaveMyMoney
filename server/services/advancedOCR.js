@@ -808,6 +808,16 @@ async function extractReceiptData(imageBuffer) {
     console.log(`[Hybrid] 📅 No date found in receipt, using extraction date: ${finalResult.metadata.date}`);
   }
 
+  // Auto-detect expense category from establishment name
+  const establishmentName = extractEstablishmentName(tesseractResult.text);
+  const category = detectExpenseCategory(establishmentName);
+
+  finalResult.metadata.establishmentName = establishmentName;
+  finalResult.metadata.category = category;
+
+  console.log(`[Hybrid] 🏪 Establishment: ${establishmentName || 'N/A'}`);
+  console.log(`[Hybrid] 📂 Auto-detected category: ${category.emoji} ${category.name}`);
+
   // Set editable flag (frontend can use this to enable editing)
   finalResult.editable = true;
 
@@ -818,6 +828,135 @@ async function extractReceiptData(imageBuffer) {
   console.log(`📊 Date: ${finalResult.metadata.date || 'N/A'}\n`);
 
   return finalResult;
+}
+
+/**
+ * Extract establishment name from receipt text
+ */
+function extractEstablishmentName(text) {
+  const lines = text.split('\n');
+
+  // Usually the establishment name is in the first 3 lines
+  for (let i = 0; i < Math.min(5, lines.length); i++) {
+    const line = lines[i].trim();
+
+    // Skip empty lines, CNPJ, addresses
+    if (!line ||
+        line.match(/CNPJ|CPF|CEP|INSCRI|DOCUMENTO/i) ||
+        line.match(/^[0-9\-\/\.\s]+$/) ||
+        line.length < 3) {
+      continue;
+    }
+
+    // First meaningful line is likely the establishment name
+    if (line.match(/[A-Za-z]{3,}/)) {
+      console.log(`[EstablishmentName] Found: "${line}"`);
+      return line;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Detect expense category based on establishment name and items
+ */
+function detectExpenseCategory(establishmentName) {
+  const categories = {
+    moradia: {
+      id: 'moradia',
+      name: 'Moradia',
+      emoji: '🏠',
+      keywords: ['imobiliaria', 'condominio', 'administradora', 'predial']
+    },
+    contas_fixas: {
+      id: 'contas_fixas',
+      name: 'Contas fixas',
+      emoji: '⚡',
+      keywords: ['energia', 'eletrica', 'cemig', 'copel', 'light', 'sabesp', 'cedae', 'companhia', 'saneamento', 'agua', 'esgoto', 'telefonica', 'vivo', 'tim', 'claro', 'oi', 'net', 'sky']
+    },
+    alimentacao: {
+      id: 'alimentacao',
+      name: 'Alimentação',
+      emoji: '🛒',
+      keywords: ['supermercado', 'mercado', 'atacadao', 'carrefour', 'extra', 'paes mendonca', 'guanabara', 'walmart', 'assai', 'makro', 'padaria', 'acougue', 'hortifruti', 'restaurante', 'lanchonete', 'pizzaria', 'hamburgueria', 'delivery', 'ifood']
+    },
+    transporte: {
+      id: 'transporte',
+      name: 'Transporte',
+      emoji: '🚗',
+      keywords: ['posto', 'combustivel', 'shell', 'ipiranga', 'petrobras', 'br distribuidora', 'ale', 'auto pecas', 'mecanica', 'oficina', 'estacionamento', 'uber', '99', 'detran']
+    },
+    saude: {
+      id: 'saude',
+      name: 'Saúde',
+      emoji: '💊',
+      keywords: ['farmacia', 'drogaria', 'droga', 'raia', 'sao paulo', 'pacheco', 'drogasil', 'ultrafarma', 'clinica', 'hospital', 'laboratorio', 'medico', 'dentista', 'odonto', 'academia', 'smartfit', 'bodytech']
+    },
+    pessoais: {
+      id: 'pessoais',
+      name: 'Pessoais e higiene',
+      emoji: '👕',
+      keywords: ['salao', 'barbearia', 'estetica', 'cosmetico', 'perfumaria', 'boticario', 'natura', 'avon', 'renner', 'riachuelo', 'c&a', 'marisa', 'calcados', 'sapato']
+    },
+    educacao: {
+      id: 'educacao',
+      name: 'Educação',
+      emoji: '🎓',
+      keywords: ['escola', 'colegio', 'universidade', 'faculdade', 'curso', 'livraria', 'papelaria', 'saraiva', 'cultura']
+    },
+    filhos: {
+      id: 'filhos',
+      name: 'Filhos e dependentes',
+      emoji: '👶',
+      keywords: ['bebe', 'infantil', 'crianca', 'brinquedo', 'ri happy', 'pbkids', 'fraldas']
+    },
+    financeiras: {
+      id: 'financeiras',
+      name: 'Financeiras',
+      emoji: '💳',
+      keywords: ['banco', 'itau', 'bradesco', 'santander', 'caixa', 'bb', 'nubank', 'inter', 'financeira', 'credito', 'emprestimo']
+    },
+    lazer: {
+      id: 'lazer',
+      name: 'Lazer e bem-estar',
+      emoji: '🎉',
+      keywords: ['cinema', 'teatro', 'show', 'ingresso', 'viagem', 'turismo', 'hotel', 'pousada', 'parque', 'diversao', 'netflix', 'spotify', 'presente']
+    },
+    pets: {
+      id: 'pets',
+      name: 'Pets',
+      emoji: '🐾',
+      keywords: ['pet', 'veterinari', 'racao', 'animal', 'banho e tosa', 'petshop', 'petz', 'cobasi']
+    },
+    outras: {
+      id: 'outras',
+      name: 'Outras eventuais',
+      emoji: '💡',
+      keywords: []
+    }
+  };
+
+  // Default category
+  let detectedCategory = categories.outras;
+
+  if (establishmentName) {
+    const nameLower = establishmentName.toLowerCase();
+
+    // Check each category's keywords
+    for (const [key, category] of Object.entries(categories)) {
+      for (const keyword of category.keywords) {
+        if (nameLower.includes(keyword.toLowerCase())) {
+          detectedCategory = category;
+          console.log(`[CategoryDetection] Matched keyword "${keyword}" → ${category.emoji} ${category.name}`);
+          return detectedCategory;
+        }
+      }
+    }
+  }
+
+  console.log(`[CategoryDetection] No match found, using default: ${detectedCategory.emoji} ${detectedCategory.name}`);
+  return detectedCategory;
 }
 
 /**
@@ -851,10 +990,31 @@ function extractExpectedItemCount(text) {
   return null;
 }
 
+/**
+ * Get all available expense categories for frontend dropdown
+ */
+function getExpenseCategories() {
+  return [
+    { id: 'moradia', name: 'Moradia', emoji: '🏠', subcategories: ['Aluguel/Prestação', 'Condomínio', 'IPTU', 'Seguro residencial', 'Manutenção e reparos'] },
+    { id: 'contas_fixas', name: 'Contas fixas', emoji: '⚡', subcategories: ['Energia elétrica', 'Água e esgoto', 'Gás', 'Internet', 'Telefone', 'TV/Streaming'] },
+    { id: 'alimentacao', name: 'Alimentação', emoji: '🛒', subcategories: ['Supermercado', 'Açougue/Padaria/Hortifrúti', 'Delivery/Restaurantes', 'Feira livre'] },
+    { id: 'transporte', name: 'Transporte', emoji: '🚗', subcategories: ['Combustível', 'Transporte público', 'Estacionamento', 'IPVA/Licenciamento', 'Seguro veículo', 'Manutenção'] },
+    { id: 'saude', name: 'Saúde', emoji: '💊', subcategories: ['Plano de saúde', 'Medicamentos', 'Consultas/Exames', 'Academia'] },
+    { id: 'pessoais', name: 'Pessoais e higiene', emoji: '👕', subcategories: ['Produtos de higiene', 'Cuidados pessoais', 'Roupas e calçados'] },
+    { id: 'educacao', name: 'Educação', emoji: '🎓', subcategories: ['Mensalidade', 'Cursos e materiais', 'Livros e assinaturas'] },
+    { id: 'filhos', name: 'Filhos e dependentes', emoji: '👶', subcategories: ['Fraldas/Leite/Roupas', 'Escola/Transporte', 'Atividades extracurriculares'] },
+    { id: 'financeiras', name: 'Financeiras', emoji: '💳', subcategories: ['Cartão de crédito', 'Financiamentos', 'Empréstimos', 'Poupança/Investimentos'] },
+    { id: 'lazer', name: 'Lazer e bem-estar', emoji: '🎉', subcategories: ['Viagens e passeios', 'Cinema/Teatro/Shows', 'Assinaturas', 'Presentes e festas'] },
+    { id: 'pets', name: 'Pets', emoji: '🐾', subcategories: ['Ração e petiscos', 'Veterinário', 'Banho e tosa', 'Acessórios'] },
+    { id: 'outras', name: 'Outras eventuais', emoji: '💡', subcategories: ['Doações', 'Multas e taxas', 'Manutenção equipamentos', 'Serviços domésticos'] }
+  ];
+}
+
 module.exports = {
   extractReceiptData,
   preprocessImage,
   extractWithTesseract,
   extractWithOpenAI,
   parseReceiptText,
+  getExpenseCategories,
 };
