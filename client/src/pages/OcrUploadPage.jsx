@@ -204,8 +204,10 @@ const OcrUploadPage = () => {
 
     try {
       const { data } = await uploadReceipt(formData);
+      console.log('OCR Response:', data); // Debug log
+
       const items = data.items || [];
-      const metadata = data.metadata;
+      const metadata = data.metadata || {};
 
       setExtractedTransactions(items);
       // Auto-select all items by default
@@ -213,9 +215,17 @@ const OcrUploadPage = () => {
       setExtractedMetadata(metadata);
       setIsSaved(false);
 
-      // Set auto-detected category
+      // Set auto-detected category or default
       if (metadata && metadata.autoCategory) {
+        console.log('Auto-detected category:', metadata.autoCategory);
         setSelectedCategory(metadata.autoCategory);
+      } else if (categories.length > 0) {
+        // Default to "Outras eventuais" if no category detected
+        console.log('Using default category');
+        const defaultCategory = categories.find(c => c.id === 'outras') || categories[categories.length - 1];
+        setSelectedCategory(defaultCategory);
+      } else {
+        console.warn('No categories loaded yet');
       }
 
       let successMsg = `✅ ${items.length} item(ns) extraído(s) com sucesso! Revise e selecione os itens que deseja salvar.`;
@@ -424,7 +434,7 @@ const OcrUploadPage = () => {
           )}
 
           {/* Category Selector */}
-          {selectedCategory && categories.length > 0 && (
+          {categories.length > 0 && selectedCategory && (
             <div className="category-card">
               <h4 className="category-header">📂 Categoria da Despesa</h4>
               <div className="category-selector-wrapper">
