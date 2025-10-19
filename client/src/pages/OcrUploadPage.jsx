@@ -28,15 +28,19 @@ const OcrUploadPage = () => {
     const fetchCategories = async () => {
       try {
         const token = localStorage.getItem('token');
+        console.log('🔍 Fetching categories from API...');
         const response = await axios.get('/api/transactions/categories', {
           headers: { 'x-auth-token': token }
         });
-        console.log('Fetched categories:', response.data);
+        console.log('✅ Categories API response:', response.data);
+        console.log('✅ Is array?', Array.isArray(response.data));
+        console.log('✅ Length:', response.data?.length);
         // Ensure it's always an array
         const categoriesData = Array.isArray(response.data) ? response.data : [];
         setCategories(categoriesData);
+        console.log('✅ Categories state set to:', categoriesData);
       } catch (error) {
-        console.error('Error fetching categories:', error);
+        console.error('❌ Error fetching categories:', error);
         setCategories([]); // Fallback to empty array on error
       }
     };
@@ -387,6 +391,12 @@ const OcrUploadPage = () => {
       {/* Results */}
       {extractedTransactions.length > 0 && (
         <div className="results-container">
+          {console.log('🔍 RENDER DEBUG:')}
+          {console.log('  extractedTransactions.length:', extractedTransactions.length)}
+          {console.log('  categories.length:', categories.length)}
+          {console.log('  selectedCategory:', selectedCategory)}
+          {console.log('  extractedMetadata:', extractedMetadata)}
+
           {/* Metadata */}
           {extractedMetadata && (
             <div className="metadata-card">

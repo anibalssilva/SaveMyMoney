@@ -14,7 +14,12 @@
       "Bash(git commit:*)",
       "Bash(git rev-list:*)",
       "Bash(git push:*)",
-      "Bash(node scripts/generateAdminHash.js:*)"
+      "Bash(node scripts/generateAdminHash.js:*)",
+      "Bash(npm run build:*)",
+      "Bash(tesseract+parser)",
+      "Bash(hybrid\",\n    \"confidence\": \"high)",
+      "Bash(medium)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []
