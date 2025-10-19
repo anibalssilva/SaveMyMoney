@@ -9,6 +9,7 @@ const multer = require('multer');
 const { createWorker } = require('tesseract.js');
 const pdf = require('pdf-parse');
 const { extractReceiptData, getExpenseCategories } = require('../../services/advancedOCR');
+const { getSubcategoriesByCategory, detectSubcategory } = require('../../services/subcategoryDetector');
 
 const Transaction = require('../../models/Transaction');
 const Budget = require('../../models/Budget');
@@ -239,6 +240,24 @@ router.get('/categories', auth, (req, res) => {
   }
 });
 
+// @route   GET api/transactions/subcategories/:categoryId
+// @desc    Get all subcategories for a specific main category
+// @access  Private
+router.get('/subcategories/:categoryId', auth, (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    console.log(`📂 Fetching subcategories for category: ${categoryId}`);
+
+    const subcategories = getSubcategoriesByCategory(categoryId);
+
+    console.log(`✅ Found ${subcategories.length} subcategories for ${categoryId}`);
+    res.json(subcategories);
+  } catch (err) {
+    console.error('❌ Error fetching subcategories:', err.message);
+    res.status(500).json({ msg: 'Erro ao buscar subcategorias' });
+  }
+});
+
 // @route   POST api/transactions/ocr
 // @desc    Extract data from receipt image (does NOT save to database)
 // @access  Private
@@ -274,13 +293,22 @@ router.post('/ocr', [auth, upload.single('receipt')], async (req, res) => {
     // Use auto-detected category for all items
     const autoCategory = result.metadata.category || { id: 'outras', name: 'Outras eventuais', emoji: '💡' };
 
-    const extractedItems = result.items.map(item => ({
-      description: item.description,
-      amount: item.amount,
-      category: autoCategory.name,
-      categoryId: autoCategory.id,
-      type: 'expense'
-    }));
+    // Detect subcategory for each item
+    const extractedItems = result.items.map(item => {
+      const subcategory = detectSubcategory(item.description, autoCategory.id);
+
+      return {
+        description: item.description,
+        amount: item.amount,
+        category: autoCategory.name,
+        categoryId: autoCategory.id,
+        subcategory: subcategory.name,
+        subcategoryId: subcategory.id,
+        subcategoryEmoji: subcategory.emoji,
+        subcategoryAutoDetected: true, // Flag to show "Auto-detectado" badge
+        type: 'expense'
+      };
+    });
 
     // Return extraction results WITHOUT saving to database
     res.json({
