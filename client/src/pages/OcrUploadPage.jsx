@@ -392,10 +392,10 @@ const OcrUploadPage = () => {
             <div className="metadata-card">
               <h4 className="metadata-header">📄 Informações do Cupom Fiscal</h4>
               <div className="metadata-grid">
-                {extractedMetadata.establishment && (
+                {(extractedMetadata.establishmentName || extractedMetadata.establishment) && (
                   <div className="metadata-item">
                     <div className="metadata-label">🏪 Estabelecimento</div>
-                    <div className="metadata-value">{extractedMetadata.establishment}</div>
+                    <div className="metadata-value">{extractedMetadata.establishmentName || extractedMetadata.establishment}</div>
                   </div>
                 )}
 
@@ -413,21 +413,7 @@ const OcrUploadPage = () => {
                   </div>
                 )}
 
-                {extractedMetadata.time && (
-                  <div className="metadata-item">
-                    <div className="metadata-label">🕐 Hora</div>
-                    <div className="metadata-value">{extractedMetadata.time}</div>
-                  </div>
-                )}
-
-                {extractedMetadata.paymentMethod && extractedMetadata.paymentMethod.details && (
-                  <div className="metadata-item">
-                    <div className="metadata-label">💳 Pagamento</div>
-                    <div className="metadata-value">{extractedMetadata.paymentMethod.details}</div>
-                  </div>
-                )}
-
-                {extractedMetadata.total && (
+                {extractedMetadata.total !== undefined && (
                   <div className="metadata-item metadata-item-total">
                     <div className="metadata-label">💰 Total</div>
                     <div className="metadata-value">R$ {extractedMetadata.total.toFixed(2)}</div>
@@ -438,28 +424,32 @@ const OcrUploadPage = () => {
           )}
 
           {/* Category Selector */}
-          {categories.length > 0 && selectedCategory && (
+          {categories.length > 0 && (
             <div className="category-card">
               <h4 className="category-header">📂 Categoria da Despesa</h4>
               <div className="category-selector-wrapper">
-                <div className="auto-category-badge">
-                  <span className="auto-category-label">Auto-detectado:</span>
-                  <span className="auto-category-value">
-                    {selectedCategory.emoji} {selectedCategory.name}
-                  </span>
-                  {extractedMetadata?.establishmentName && (
-                    <span className="establishment-name">
-                      ({extractedMetadata.establishmentName})
+                {selectedCategory && (
+                  <div className="auto-category-badge">
+                    <span className="auto-category-label">
+                      {selectedCategory.id === 'outras' ? 'Categoria:' : 'Auto-detectado:'}
                     </span>
-                  )}
-                </div>
+                    <span className="auto-category-value">
+                      {selectedCategory.emoji} {selectedCategory.name}
+                    </span>
+                    {extractedMetadata?.establishmentName && selectedCategory.id !== 'outras' && (
+                      <span className="establishment-name">
+                        ({extractedMetadata.establishmentName})
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="category-selector">
                   <label htmlFor="category-dropdown" className="category-label">
-                    Alterar categoria:
+                    {selectedCategory ? 'Alterar categoria:' : 'Selecione a categoria:'}
                   </label>
                   <select
                     id="category-dropdown"
-                    value={selectedCategory?.id || ''}
+                    value={selectedCategory?.id || 'outras'}
                     onChange={(e) => applyCategoryToAll(e.target.value)}
                     className="category-dropdown"
                   >
