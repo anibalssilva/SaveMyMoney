@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getTransactions, createTransaction, updateTransaction, deleteTransaction } from '../services/api';
+import api from '../services/api';
 import Toast from '../components/Toast';
 import './TransactionsPage.css';
 
@@ -11,12 +12,17 @@ const TransactionsPage = ({ setAlert }) => {
     amount: '',
     date: new Date().toISOString().split('T')[0],
     category: '',
+    subcategoryId: '',
     type: 'expense',
   });
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState(null);
+
+  // Categories and subcategories
+  const [availableCategories, setAvailableCategories] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -26,7 +32,29 @@ const TransactionsPage = ({ setAlert }) => {
 
   useEffect(() => {
     loadTransactions();
+    loadCategories();
   }, []);
+
+  // Load categories from API
+  const loadCategories = async () => {
+    try {
+      const response = await api.get('/transactions/categories');
+      setAvailableCategories(response.data);
+    } catch (error) {
+      console.error('Error loading categories:', error);
+    }
+  };
+
+  // Load subcategories for a category
+  const loadSubcategories = async (categoryId) => {
+    try {
+      const response = await api.get(`/transactions/subcategories/${categoryId}`);
+      setSubcategories(response.data);
+    } catch (error) {
+      console.error('Error loading subcategories:', error);
+      setSubcategories([{ id: 'outros', name: 'Outros', emoji: '💡' }]);
+    }
+  };
 
   const loadTransactions = async () => {
     try {
@@ -106,7 +134,18 @@ const TransactionsPage = ({ setAlert }) => {
 
   const onChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+
+    // If category changed, load subcategories
+    if (name === 'category') {
+      setFormData({ ...formData, [name]: value, subcategoryId: '' });
+      if (value) {
+        loadSubcategories(value);
+      } else {
+        setSubcategories([]);
+      }
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const onSubmit = async (e) => {
@@ -156,10 +195,12 @@ const TransactionsPage = ({ setAlert }) => {
       amount: '',
       date: new Date().toISOString().split('T')[0],
       category: '',
+      subcategoryId: '',
       type: 'expense',
     });
     setEditingId(null);
     setShowForm(false);
+    setSubcategories([]);
   };
 
   const onEdit = (transaction) => {
@@ -168,10 +209,17 @@ const TransactionsPage = ({ setAlert }) => {
       amount: transaction.amount,
       date: new Date(transaction.date).toISOString().split('T')[0],
       category: transaction.category,
+      subcategoryId: transaction.subcategoryId || '',
       type: transaction.type,
     });
     setEditingId(transaction._id);
     setShowForm(true);
+
+    // Load subcategories for the transaction's category
+    if (transaction.category) {
+      loadSubcategories(transaction.category);
+    }
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -325,22 +373,43 @@ const TransactionsPage = ({ setAlert }) => {
 
               <div className="form-group">
                 <label>Categoria</label>
-                <input
-                  type="text"
+                <select
                   name="category"
                   value={formData.category}
                   onChange={onChange}
-                  placeholder="Ex: Alimentação"
-                  list="categories-list"
                   required
-                />
-                <datalist id="categories-list">
-                  {categories.map(cat => (
-                    <option key={cat} value={cat} />
+                  className="category-select"
+                >
+                  <option value="">Selecione uma categoria</option>
+                  {availableCategories.map(cat => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.emoji} {cat.name}
+                    </option>
                   ))}
-                </datalist>
+                </select>
               </div>
             </div>
+
+            {/* Subcategory row - only show when category is selected */}
+            {formData.category && subcategories.length > 0 && (
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Subcategoria</label>
+                  <select
+                    name="subcategoryId"
+                    value={formData.subcategoryId}
+                    onChange={onChange}
+                    className="subcategory-select"
+                  >
+                    {subcategories.map(subcat => (
+                      <option key={subcat.id} value={subcat.id}>
+                        {subcat.emoji} {subcat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
 
             <div className="form-group">
               <label>Tipo</label>
