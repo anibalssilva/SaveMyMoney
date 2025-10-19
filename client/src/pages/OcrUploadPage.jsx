@@ -553,7 +553,6 @@ const OcrUploadPage = () => {
             </p>
 
             <ul className="items-list">
-              {console.log('🔍 Subcategories state:', subcategories)}
               {extractedTransactions.map((t, index) => (
                 <li
                   key={index}

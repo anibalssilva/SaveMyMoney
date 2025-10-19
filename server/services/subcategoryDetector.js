@@ -512,6 +512,36 @@ const subcategoryMappings = {
   },
 
   outras: {
+    presentes: {
+      id: 'presentes',
+      name: 'Presentes',
+      emoji: '🎁',
+      keywords: ['presente', 'gift', 'aniversario', 'natal', 'dia das maes', 'dia dos pais']
+    },
+    doacao: {
+      id: 'doacao',
+      name: 'Doações',
+      emoji: '❤️',
+      keywords: ['doacao', 'caridade', 'ong', 'igreja', 'doacoes']
+    },
+    multas: {
+      id: 'multas',
+      name: 'Multas e Taxas',
+      emoji: '🚨',
+      keywords: ['multa', 'taxa', 'detran', 'infracacao', 'penalidade']
+    },
+    seguros: {
+      id: 'seguros',
+      name: 'Seguros',
+      emoji: '🛡️',
+      keywords: ['seguro', 'insurance', 'vida', 'carro', 'residencial', 'porto seguro']
+    },
+    servicos: {
+      id: 'servicos',
+      name: 'Serviços Diversos',
+      emoji: '🔧',
+      keywords: ['servico', 'manutencao', 'reparo', 'conserto', 'assistencia']
+    },
     outros: {
       id: 'outros',
       name: 'Outros',
