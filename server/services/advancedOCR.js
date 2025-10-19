@@ -230,7 +230,15 @@ async function extractWithOpenAI(imageBuffer) {
       'VENDEDOR', 'OPERADOR', 'CAIXA'
     ];
 
-    const validItems = (data.items || []).filter(item => {
+    // Normalize items: GPT-4o returns "total" but we need "amount"
+    const normalizedItems = (data.items || []).map(item => ({
+      description: item.description,
+      amount: item.total || item.amount, // GPT-4o uses "total", fallback to "amount"
+      quantity: item.quantity || 1,
+      unit_price: item.unit_price
+    }));
+
+    const validItems = normalizedItems.filter(item => {
       const desc = item.description.toUpperCase();
 
       // Check if item description contains any invalid keyword
@@ -240,7 +248,7 @@ async function extractWithOpenAI(imageBuffer) {
       const isTooShort = item.description.trim().length < 3;
 
       // Check if amount is reasonable (between 0.01 and 50000)
-      const hasValidAmount = item.amount > 0.01 && item.amount < 50000;
+      const hasValidAmount = item.amount && item.amount > 0.01 && item.amount < 50000;
 
       if (hasInvalidKeyword) {
         console.log(`[OpenAI] Filtered out invalid item: "${item.description}" (contains payment/metadata keyword)`);
@@ -653,53 +661,80 @@ async function extractReceiptData(imageBuffer) {
   console.log(`[Hybrid] Tesseract+Parser extracted: ${parserCount} items`);
   console.log(`[Hybrid] Expected from receipt: ${expectedItemCount || 'unknown'}`);
 
-  // Decision logic
+  // Decision logic with INTELLIGENT MERGE
   let finalResult;
 
-  // Case 1: GPT-4o has items AND matches expected count (or no expected count available)
-  if (openaiResult && openaiCount > 0) {
-    if (!expectedItemCount || openaiCount === expectedItemCount) {
-      console.log(`\n[Hybrid] ✅ DECISION: Using GPT-4o Vision (${openaiCount} items)`);
-      console.log(`[Hybrid] Reason: GPT-4o extracted ${openaiCount} items${expectedItemCount ? ' (matches expected count)' : ''}`);
-      finalResult = openaiResult;
-    }
-    // Case 2: GPT-4o has items but FEWER than expected - try to merge
-    else if (openaiCount < expectedItemCount) {
-      console.log(`\n[Hybrid] ⚠️  GPT-4o incomplete: ${openaiCount}/${expectedItemCount} items`);
+  // Case 1: GPT-4o has items AND matches expected count
+  if (openaiResult && openaiCount > 0 && expectedItemCount && openaiCount === expectedItemCount) {
+    console.log(`\n[Hybrid] ✅ DECISION: Using GPT-4o Vision (${openaiCount} items)`);
+    console.log(`[Hybrid] Reason: Perfect match with expected count (${openaiCount}/${expectedItemCount})`);
+    finalResult = { ...openaiResult, method: 'hybrid-openai' };
+  }
+  // Case 2: GPT-4o has items but FEWER than expected - MERGE with Parser
+  else if (openaiResult && openaiCount > 0 && expectedItemCount && openaiCount < expectedItemCount) {
+    console.log(`\n[Hybrid] ⚠️  GPT-4o incomplete: ${openaiCount}/${expectedItemCount} items`);
+    console.log(`[Hybrid] 🔄 Attempting INTELLIGENT MERGE with Tesseract parser...\n`);
 
-      // If parser has MORE items, compare which is closer to expected
-      if (parserCount > openaiCount) {
-        const openaiDiff = Math.abs(expectedItemCount - openaiCount);
-        const parserDiff = Math.abs(expectedItemCount - parserCount);
+    // Merge strategy: Use GPT-4o items + add missing items from Parser
+    const mergedItems = [...openaiResult.items];
+    const openaiDescriptions = new Set(
+      openaiResult.items.map(item => item.description.toLowerCase().replace(/\s+/g, ''))
+    );
 
-        if (parserDiff < openaiDiff || parserCount === expectedItemCount) {
-          console.log(`[Hybrid] ✅ DECISION: Using Tesseract+Parser (${parserCount} items)`);
-          console.log(`[Hybrid] Reason: Parser is closer to expected count (${parserCount} vs ${openaiCount})`);
-          finalResult = { ...parserResult, method: 'hybrid-parser' };
-        } else {
-          console.log(`[Hybrid] ✅ DECISION: Using GPT-4o Vision despite lower count`);
-          console.log(`[Hybrid] Reason: Still closer to expected than parser`);
-          finalResult = { ...openaiResult, method: 'hybrid-openai' };
+    let addedCount = 0;
+    for (const parserItem of parserResult.items) {
+      const normalizedDesc = parserItem.description.toLowerCase().replace(/\s+/g, '');
+
+      // Only add if not already in GPT-4o results
+      if (!openaiDescriptions.has(normalizedDesc)) {
+        console.log(`[Hybrid] + Adding from parser: "${parserItem.description}" (R$ ${parserItem.amount})`);
+        mergedItems.push(parserItem);
+        addedCount++;
+
+        // Stop if we reach expected count
+        if (mergedItems.length >= expectedItemCount) {
+          break;
         }
-      } else {
-        console.log(`[Hybrid] ✅ DECISION: Using GPT-4o Vision (best available)`);
-        finalResult = { ...openaiResult, method: 'hybrid-openai' };
       }
     }
-    // Case 3: GPT-4o has MORE than expected
-    else {
-      console.log(`\n[Hybrid] ⚠️  GPT-4o extracted MORE than expected: ${openaiCount}/${expectedItemCount}`);
-      console.log(`[Hybrid] ✅ DECISION: Using GPT-4o Vision (validation filters may have removed invalid items)`);
+
+    console.log(`\n[Hybrid] ✅ DECISION: Using MERGED result (${mergedItems.length} items)`);
+    console.log(`[Hybrid] Details: ${openaiCount} from GPT-4o + ${addedCount} from Parser = ${mergedItems.length} total`);
+    console.log(`[Hybrid] Match with expected: ${mergedItems.length}/${expectedItemCount} (${Math.round(mergedItems.length/expectedItemCount*100)}%)`);
+
+    finalResult = {
+      items: mergedItems,
+      metadata: openaiResult.metadata || parserResult.metadata,
+      confidence: mergedItems.length === expectedItemCount ? 'high' : 'medium',
+      method: 'hybrid-merged',
+    };
+  }
+  // Case 3: No expected count, but both methods have results - choose best
+  else if (openaiResult && openaiCount > 0 && parserCount > 0 && !expectedItemCount) {
+    // Use whichever has more items (likely more complete)
+    if (openaiCount >= parserCount) {
+      console.log(`\n[Hybrid] ✅ DECISION: Using GPT-4o Vision (${openaiCount} items)`);
+      console.log(`[Hybrid] Reason: More items than parser (${openaiCount} vs ${parserCount})`);
       finalResult = { ...openaiResult, method: 'hybrid-openai' };
+    } else {
+      console.log(`\n[Hybrid] ✅ DECISION: Using Tesseract+Parser (${parserCount} items)`);
+      console.log(`[Hybrid] Reason: More items than GPT-4o (${parserCount} vs ${openaiCount})`);
+      finalResult = { ...parserResult, method: 'hybrid-parser' };
     }
   }
-  // Case 4: GPT-4o failed, use parser
+  // Case 4: Only GPT-4o has results
+  else if (openaiResult && openaiCount > 0) {
+    console.log(`\n[Hybrid] ✅ DECISION: Using GPT-4o Vision (${openaiCount} items)`);
+    console.log(`[Hybrid] Reason: Only GPT-4o extracted items successfully`);
+    finalResult = { ...openaiResult, method: 'hybrid-openai' };
+  }
+  // Case 5: Only Parser has results
   else if (parserCount > 0) {
     console.log(`\n[Hybrid] ✅ DECISION: Using Tesseract+Parser (${parserCount} items)`);
-    console.log(`[Hybrid] Reason: GPT-4o unavailable/failed`);
+    console.log(`[Hybrid] Reason: GPT-4o unavailable/failed, using parser`);
     finalResult = { ...parserResult, method: 'hybrid-parser' };
   }
-  // Case 5: Both failed
+  // Case 6: Both failed
   else {
     console.log(`\n[Hybrid] ❌ DECISION: All methods failed`);
     finalResult = {
@@ -732,21 +767,29 @@ async function extractReceiptData(imageBuffer) {
  */
 function extractExpectedItemCount(text) {
   const itemCountPatterns = [
-    /(?:QTD|QTDE|QUANTIDADE)\.?\s*TOTAL\s*(?:DE\s*)?(?:ITENS)?[:\s]*(\d+)/i,
-    /TOTAL\s*(?:DE\s*)?ITENS[:\s]*(\d+)/i,
-    /(\d+)\s*(?:ITENS|PRODUTOS)/i,
-    /QTD\.\s*TOTAL\s*DE\s*ITENS\s*(\d+)/i
+    /QTD\.?\s*TOTAL\s*DE\s*ITENS\s*(\d+)/i,
+    /(?:QTD|QTDE|QUANTIDADE)\.?\s*TOTAL\s*(?:DE\s*)?(?:ITENS)?[:\s]+(\d+)/i,
+    /TOTAL\s*(?:DE\s*)?ITENS[:\s]+(\d+)/i,
+    /(\d+)\s+(?:ITENS|PRODUTOS)\s*$/i,
+    /(?:ITENS|PRODUTOS)[:\s]+(\d+)/i
   ];
 
   const lines = text.split('\n');
   for (const line of lines) {
-    for (const pattern of itemCountPatterns) {
-      const match = line.match(pattern);
-      if (match) {
-        return parseInt(match[1]);
+    // Look specifically for lines with item count info
+    if (line.match(/QTD|QTDE|TOTAL.*ITEN|ITEN.*TOTAL/i)) {
+      console.log(`[ExpectedCount] Checking line: "${line}"`);
+      for (const pattern of itemCountPatterns) {
+        const match = line.match(pattern);
+        if (match) {
+          const count = parseInt(match[1]);
+          console.log(`[ExpectedCount] ✓ Found expected count: ${count}`);
+          return count;
+        }
       }
     }
   }
+  console.log(`[ExpectedCount] No expected count found in receipt`);
   return null;
 }
 
