@@ -893,11 +893,11 @@ function detectExpenseCategory(establishmentName) {
       emoji: '⚡',
       keywords: ['energia', 'eletrica', 'cemig', 'copel', 'light', 'sabesp', 'cedae', 'companhia', 'saneamento', 'agua', 'esgoto', 'telefonica', 'vivo', 'tim', 'claro', 'oi', 'net', 'sky']
     },
-    alimentacao: {
-      id: 'alimentacao',
-      name: 'Alimentação',
+    supermercado: {
+      id: 'supermercado',
+      name: 'Supermercado',
       emoji: '🛒',
-      keywords: ['supermercado', 'mercado', 'atacadao', 'carrefour', 'extra', 'paes mendonca', 'guanabara', 'walmart', 'assai', 'makro', 'padaria', 'acougue', 'hortifruti', 'restaurante', 'lanchonete', 'pizzaria', 'hamburgueria', 'delivery', 'ifood']
+      keywords: ['supermercado', 'mercado', 'atacadao', 'carrefour', 'extra', 'paes mendonca', 'guanabara', 'walmart', 'assai', 'makro', 'padaria', 'acougue', 'hortifruti', 'quitanda']
     },
     transporte: {
       id: 'transporte',
@@ -1056,7 +1056,7 @@ function getExpenseCategories() {
   return [
     { id: 'moradia', name: 'Moradia', emoji: '🏠' },
     { id: 'contas_fixas', name: 'Contas fixas', emoji: '⚡' },
-    { id: 'alimentacao', name: 'Alimentação', emoji: '🛒' },
+    { id: 'supermercado', name: 'Supermercado', emoji: '🛒' },
     { id: 'transporte', name: 'Transporte', emoji: '🚗' },
     { id: 'saude', name: 'Saúde', emoji: '💊' },
     { id: 'pessoais', name: 'Pessoais e higiene', emoji: '👕' },

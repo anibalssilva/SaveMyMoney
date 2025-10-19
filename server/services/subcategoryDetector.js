@@ -4,7 +4,7 @@
  */
 
 const subcategoryMappings = {
-  alimentacao: {
+  supermercado: {
     bebidas_alcoolicas: {
       id: 'bebidas_alcoolicas',
       name: 'Bebidas Alcoólicas',
@@ -151,9 +151,16 @@ const subcategoryMappings = {
         'fralda', 'pampers', 'huggies', 'lenco', 'toalha',
         'detergente', 'ype', 'limpol', 'clear', 'omo', 'ariel', 'ace', 'comfort',
         'sabao', 'agua sanitaria', 'desinfetante', 'limpa', 'ajax', 'veja',
-        'esponja', 'pano', 'vassoura', 'rodo', 'balde', 'saco lixo'
+        'esponja', 'pano', 'vassoura', 'rodo', 'balde', 'saco lixo', 'fralda', 'pampers', 
+        'huggies', 'lenco', 'toalha', 'bebe'
       ]
-    },
+    // },
+    // fraldas: {
+    //   id: 'fraldas',
+    //   name: 'Fraldas e Higiene',
+    //   emoji: '🍼',
+    //   keywords: ['fralda', 'pampers', 'huggies', 'lenco', 'toalha', 'bebe']
+    // },
     pet: {
       id: 'pet',
       name: 'Pet',
@@ -337,12 +344,6 @@ const subcategoryMappings = {
       name: 'Brinquedos',
       emoji: '🧸',
       keywords: ['brinquedo', 'toy', 'ri happy', 'pbkids', 'lego', 'boneca']
-    },
-    fraldas: {
-      id: 'fraldas',
-      name: 'Fraldas e Higiene',
-      emoji: '🍼',
-      keywords: ['fralda', 'pampers', 'huggies', 'lenco', 'toalha', 'bebe']
     },
     outros: {
       id: 'outros',
@@ -554,7 +555,7 @@ const subcategoryMappings = {
 /**
  * Detect subcategory for an item based on description and main category
  * @param {string} description - Item description (e.g., "CERV B.BADEN GOLD 350ML")
- * @param {string} mainCategoryId - Main category ID (e.g., "alimentacao")
+ * @param {string} mainCategoryId - Main category ID (e.g., "supermercado")
  * @returns {object} Subcategory object { id, name, emoji }
  */
 function detectSubcategory(description, mainCategoryId) {
@@ -594,7 +595,7 @@ function detectSubcategory(description, mainCategoryId) {
 
 /**
  * Get all subcategories for a specific main category
- * @param {string} mainCategoryId - Main category ID (e.g., "alimentacao")
+ * @param {string} mainCategoryId - Main category ID (e.g., "supermercado")
  * @returns {array} Array of subcategory objects
  */
 function getSubcategoriesByCategory(mainCategoryId) {
