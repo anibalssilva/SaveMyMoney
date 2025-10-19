@@ -884,6 +884,14 @@ body.dark .item-row {
   text-align: right;
 }
 
+.item-edit-subcategory {
+  flex: 1.5;
+  min-width: 150px;
+  position: relative;
+  z-index: 20;
+  cursor: pointer;
+}
+
 .item-actions {
   display: flex;
   gap: var(--space-sm);

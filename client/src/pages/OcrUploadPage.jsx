@@ -577,6 +577,7 @@ const OcrUploadPage = () => {
                         onChange={(e) => updateItem(index, 'description', e.target.value)}
                         className="item-edit-input item-edit-description"
                         onClick={(e) => e.stopPropagation()}
+                        placeholder="Descrição do item"
                       />
                       <input
                         type="number"
@@ -585,7 +586,22 @@ const OcrUploadPage = () => {
                         onChange={(e) => updateItem(index, 'amount', parseFloat(e.target.value) || 0)}
                         className="item-edit-input item-edit-amount"
                         onClick={(e) => e.stopPropagation()}
+                        placeholder="0.00"
                       />
+                      {subcategories.length > 0 && (
+                        <select
+                          value={t.subcategoryId || 'outros'}
+                          onChange={(e) => updateSubcategory(index, e.target.value)}
+                          className="item-edit-input item-edit-subcategory"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {subcategories.map(subcat => (
+                            <option key={subcat.id} value={subcat.id}>
+                              {subcat.emoji} {subcat.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
