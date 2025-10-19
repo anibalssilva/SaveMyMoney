@@ -852,3 +852,109 @@
     padding: var(--space-sm);
   }
 }
+
+/* ===== NEW DASHBOARD CARDS LAYOUT ===== */
+
+.stats-grid-dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+/* Top Category Card */
+.stat-card-top-category {
+  grid-column: span 1;
+}
+
+.stat-category-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--cyber-primary);
+  margin: var(--space-sm) 0;
+  text-transform: capitalize;
+}
+
+/* Category Percentages Card */
+.stat-card-percentages {
+  grid-column: span 2;
+}
+
+.category-percentages-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.category-percentage-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.category-percentage-bar-container {
+  width: 100%;
+  height: 8px;
+  background: rgba(0, 240, 255, 0.1);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.category-percentage-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyber-primary), var(--cyber-secondary));
+  border-radius: var(--radius-full);
+  transition: width var(--transition-base);
+}
+
+.category-percentage-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.category-percentage-name {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.category-percentage-value {
+  color: white;
+  font-weight: 600;
+}
+
+.category-percentage-percent {
+  color: var(--cyber-primary);
+  margin-left: var(--space-xs);
+}
+
+.no-data-message {
+  text-align: center;
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: var(--space-lg);
+}
+
+/* Responsive adjustments for new cards */
+@media (max-width: 1024px) {
+  .stats-grid-dashboard {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stat-card-percentages {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .stats-grid-dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-card-percentages,
+  .stat-card-top-category {
+    grid-column: span 1;
+  }
+}

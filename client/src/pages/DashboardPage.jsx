@@ -1,48 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import { Bar, Line, Pie } from 'react-chartjs-2';
 import api from '../services/api';
 import Toast from '../components/Toast';
 import './DashboardPage.css';
-
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend
-);
 
 const DashboardPage = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
-  const [valuesVisible, setValuesVisible] = useState(true);
+  const [valuesVisible, setValuesVisible] = useState(false); // Start hidden by default
 
   // Filtros
-  const [selectedType, setSelectedType] = useState('expense'); // all, expense, income
+  const [selectedType, setSelectedType] = useState('all'); // all, expense, income
   const [selectedMonth, setSelectedMonth] = useState('all'); // all, 2025-01, etc
   const [selectedYear, setSelectedYear] = useState('all');
-
-  // Chart options
-  const [barChartMode, setBarChartMode] = useState('category'); // 'category' or 'subcategory'
-  const [barChartCategory, setBarChartCategory] = useState('all'); // for subcategory mode
 
   useEffect(() => {
     fetchTransactions();
@@ -86,17 +56,6 @@ const DashboardPage = () => {
     return Array.from(months).sort().reverse();
   }, [transactions]);
 
-  // Get unique categories for bar chart filter
-  const expenseCategories = useMemo(() => {
-    const categories = new Set();
-    transactions.forEach(t => {
-      if (t.type === 'expense' && t.category) {
-        categories.add(t.category);
-      }
-    });
-    return Array.from(categories).sort();
-  }, [transactions]);
-
   // Filter transactions
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
@@ -129,6 +88,27 @@ const DashboardPage = () => {
     const totalIncome = incomes.reduce((sum, t) => sum + t.amount, 0);
     const balance = totalIncome - totalExpenses;
 
+    // Calculate top category
+    const categoryTotals = {};
+    expenses.forEach(t => {
+      const cat = t.category || 'Sem Categoria';
+      categoryTotals[cat] = (categoryTotals[cat] || 0) + t.amount;
+    });
+
+    const sortedCategories = Object.entries(categoryTotals)
+      .sort((a, b) => b[1] - a[1]);
+
+    const topCategory = sortedCategories.length > 0
+      ? { name: sortedCategories[0][0], amount: sortedCategories[0][1] }
+      : { name: 'N/A', amount: 0 };
+
+    // Calculate category percentages (top 5)
+    const categoryPercentages = sortedCategories.slice(0, 5).map(([name, amount]) => ({
+      name,
+      amount,
+      percentage: totalExpenses > 0 ? (amount / totalExpenses * 100).toFixed(1) : 0
+    }));
+
     return {
       totalExpenses,
       totalIncome,
@@ -136,165 +116,10 @@ const DashboardPage = () => {
       totalTransactions: filteredTransactions.length,
       expenseCount: expenses.length,
       incomeCount: incomes.length,
+      topCategory,
+      categoryPercentages,
     };
   }, [filteredTransactions]);
-
-  // Bar Chart Data - Category or Subcategory
-  const barChartData = useMemo(() => {
-    const expenses = filteredTransactions.filter(t => t.type === 'expense');
-
-    if (barChartMode === 'category') {
-      // Group by category
-      const categoryTotals = {};
-      expenses.forEach(t => {
-        const cat = t.category || 'Sem Categoria';
-        categoryTotals[cat] = (categoryTotals[cat] || 0) + t.amount;
-      });
-
-      // Sort and take top 10
-      const sorted = Object.entries(categoryTotals)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10);
-
-      return {
-        labels: sorted.map(([name]) => name),
-        datasets: [{
-          label: 'Despesas',
-          data: sorted.map(([, amount]) => amount),
-          backgroundColor: 'rgba(239, 68, 68, 0.8)',
-          borderColor: 'rgba(239, 68, 68, 1)',
-          borderWidth: 2,
-        }]
-      };
-    } else {
-      // Group by subcategory for selected category
-      const filtered = barChartCategory === 'all'
-        ? expenses
-        : expenses.filter(t => t.category === barChartCategory);
-
-      const subcategoryTotals = {};
-      filtered.forEach(t => {
-        const subcat = t.subcategoryId || 'outros';
-        subcategoryTotals[subcat] = (subcategoryTotals[subcat] || 0) + t.amount;
-      });
-
-      const sorted = Object.entries(subcategoryTotals)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10);
-
-      return {
-        labels: sorted.map(([name]) => name),
-        datasets: [{
-          label: 'Gastos por Subcategoria',
-          data: sorted.map(([, amount]) => amount),
-          backgroundColor: 'rgba(239, 68, 68, 0.8)',
-          borderColor: 'rgba(239, 68, 68, 1)',
-          borderWidth: 2,
-        }]
-      };
-    }
-  }, [filteredTransactions, barChartMode, barChartCategory]);
-
-  // Line Chart Data - Monthly expenses and income evolution
-  const lineChartData = useMemo(() => {
-    // Group by month
-    const monthlyData = {};
-
-    transactions.forEach(t => {
-      const date = new Date(t.date);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-
-      if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = { expenses: 0, income: 0 };
-      }
-
-      if (t.type === 'expense') {
-        monthlyData[monthKey].expenses += t.amount;
-      } else {
-        monthlyData[monthKey].income += t.amount;
-      }
-    });
-
-    // Sort months
-    const sortedMonths = Object.keys(monthlyData).sort();
-
-    // Format month names
-    const labels = sortedMonths.map(monthKey => {
-      const [year, month] = monthKey.split('-');
-      const date = new Date(year, month - 1);
-      return date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-    });
-
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Despesas',
-          data: sortedMonths.map(month => monthlyData[month].expenses),
-          borderColor: 'rgba(239, 68, 68, 1)',
-          backgroundColor: 'rgba(239, 68, 68, 0.1)',
-          tension: 0.4,
-          pointRadius: 6,
-          pointHoverRadius: 8,
-        },
-        {
-          label: 'Receitas',
-          data: sortedMonths.map(month => monthlyData[month].income),
-          borderColor: 'rgba(34, 197, 94, 1)',
-          backgroundColor: 'rgba(34, 197, 94, 0.1)',
-          tension: 0.4,
-          pointRadius: 6,
-          pointHoverRadius: 8,
-        }
-      ]
-    };
-  }, [transactions]);
-
-  // Pie Chart Data - Expense categories vs total income with percentages
-  const pieChartData = useMemo(() => {
-    const expenses = filteredTransactions.filter(t => t.type === 'expense');
-    const totalIncome = stats.totalIncome;
-
-    // Group by category
-    const categoryTotals = {};
-    expenses.forEach(t => {
-      const cat = t.category || 'Sem Categoria';
-      categoryTotals[cat] = (categoryTotals[cat] || 0) + t.amount;
-    });
-
-    // Sort and take top 8
-    const sorted = Object.entries(categoryTotals)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8);
-
-    // Calculate percentages relative to total income
-    const labels = sorted.map(([name, amount]) => {
-      const percentage = totalIncome > 0 ? (amount / totalIncome * 100).toFixed(1) : 0;
-      return `${name} (${percentage}%)`;
-    });
-
-    const colors = [
-      'rgba(239, 68, 68, 0.8)',
-      'rgba(34, 197, 94, 0.8)',
-      'rgba(59, 130, 246, 0.8)',
-      'rgba(251, 191, 36, 0.8)',
-      'rgba(168, 85, 247, 0.8)',
-      'rgba(236, 72, 153, 0.8)',
-      'rgba(20, 184, 166, 0.8)',
-      'rgba(249, 115, 22, 0.8)',
-    ];
-
-    return {
-      labels,
-      datasets: [{
-        label: 'Comprometimento da Receita',
-        data: sorted.map(([, amount]) => amount),
-        backgroundColor: colors,
-        borderColor: colors.map(c => c.replace('0.8', '1')),
-        borderWidth: 2,
-      }]
-    };
-  }, [filteredTransactions, stats.totalIncome]);
 
   // Format month name
   const getMonthName = (monthKey) => {
@@ -334,8 +159,63 @@ const DashboardPage = () => {
         </p>
       </div>
 
-      {/* Statistics Cards - 2x2 Grid */}
-      <div className="stats-grid-2x2">
+      {/* Filters - First */}
+      <div className="filters-section-below">
+        <div className="filters-header">
+          <h3>🔍 Filtros</h3>
+        </div>
+
+        <div className="filters-grid-horizontal">
+          {/* Type Filter */}
+          <div className="filter-group">
+            <label className="filter-label">TIPO</label>
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">Todos</option>
+              <option value="expense">Despesas</option>
+              <option value="income">Receitas</option>
+            </select>
+          </div>
+
+          {/* Month Filter */}
+          <div className="filter-group">
+            <label className="filter-label">MÊS</label>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">Todos os Meses</option>
+              {availableMonths.map(month => (
+                <option key={month} value={month}>
+                  {getMonthName(month)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Year Filter */}
+          <div className="filter-group">
+            <label className="filter-label">ANO</label>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">Todos os Anos</option>
+              {availableYears.map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Statistics Cards - Responsive Grid */}
+      <div className="stats-grid-dashboard">
         <div className="stat-card stat-card-income">
           <div className="stat-header">
             <div className="stat-icon">💰</div>
@@ -392,198 +272,51 @@ const DashboardPage = () => {
             <div className="stat-detail">transações filtradas</div>
           </div>
         </div>
-      </div>
 
-      {/* Filters - Below cards */}
-      <div className="filters-section-below">
-        <div className="filters-header">
-          <h3>🔍 Filtros</h3>
-        </div>
-
-        <div className="filters-grid-horizontal">
-          {/* Type Filter */}
-          <div className="filter-group">
-            <label className="filter-label">TIPO</label>
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">Todos</option>
-              <option value="expense">Despesas</option>
-              <option value="income">Receitas</option>
-            </select>
+        {/* Top Category Card */}
+        <div className="stat-card stat-card-top-category">
+          <div className="stat-header">
+            <div className="stat-icon">🏆</div>
           </div>
-
-          {/* Month Filter */}
-          <div className="filter-group">
-            <label className="filter-label">MÊS</label>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">Todos os Meses</option>
-              {availableMonths.map(month => (
-                <option key={month} value={month}>
-                  {getMonthName(month)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Year Filter */}
-          <div className="filter-group">
-            <label className="filter-label">ANO</label>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">Todos os Anos</option>
-              {availableYears.map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Charts Section */}
-      <div className="charts-section">
-        {/* Bar Chart */}
-        <div className="chart-card chart-card-full">
-          <div className="chart-header">
-            <h3>📊 Gráfico de Barras - Por Categoria</h3>
-            <div className="chart-controls">
-              <select
-                value={barChartMode}
-                onChange={(e) => setBarChartMode(e.target.value)}
-                className="chart-select"
-              >
-                <option value="category">Agrupado por Categorias</option>
-                <option value="subcategory">Gastos por Subcategoria</option>
-              </select>
-
-              {barChartMode === 'subcategory' && (
-                <select
-                  value={barChartCategory}
-                  onChange={(e) => setBarChartCategory(e.target.value)}
-                  className="chart-select"
-                >
-                  <option value="all">Todas as Categorias</option>
-                  {expenseCategories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              )}
+          <div className="stat-content">
+            <div className="stat-label">CATEGORIA COM MAIOR GASTO</div>
+            <div className="stat-category-name">{stats.topCategory.name}</div>
+            <div className="stat-value">
+              {valuesVisible ? `R$ ${stats.topCategory.amount.toFixed(2)}` : '••••••'}
             </div>
           </div>
-          <div className="chart-description">
-            Top 10 categorias com maiores valores
-          </div>
-          <div className="chart-wrapper">
-            <Bar
-              data={barChartData}
-              options={{
-                responsive: true,
-                maintainAspectRatio: true,
-                aspectRatio: 2,
-                plugins: {
-                  legend: { display: true, position: 'top' },
-                  tooltip: {
-                    callbacks: {
-                      label: (context) => `R$ ${context.parsed.y.toFixed(2)}`
-                    }
-                  }
-                },
-                scales: {
-                  y: {
-                    beginAtZero: true,
-                    ticks: {
-                      callback: (value) => `R$ ${value.toFixed(0)}`
-                    }
-                  }
-                }
-              }}
-            />
-          </div>
         </div>
 
-        {/* Line Chart */}
-        <div className="chart-card chart-card-full">
-          <div className="chart-header">
-            <h3>📈 Gráfico de Linhas - Evolução Temporal</h3>
+        {/* Category Percentages Card */}
+        <div className="stat-card stat-card-percentages">
+          <div className="stat-header">
+            <div className="stat-icon">📊</div>
           </div>
-          <div className="chart-description">
-            Valores ao longo do tempo
-          </div>
-          <div className="chart-wrapper">
-            <Line
-              data={lineChartData}
-              options={{
-                responsive: true,
-                maintainAspectRatio: true,
-                aspectRatio: 2,
-                plugins: {
-                  legend: { display: true, position: 'top' },
-                  tooltip: {
-                    callbacks: {
-                      label: (context) => `${context.dataset.label}: R$ ${context.parsed.y.toFixed(2)}`
-                    }
-                  }
-                },
-                scales: {
-                  y: {
-                    beginAtZero: true,
-                    ticks: {
-                      callback: (value) => `R$ ${value.toFixed(0)}`
-                    }
-                  }
-                }
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Pie Chart */}
-        <div className="chart-card chart-card-half">
-          <div className="chart-header">
-            <h3>🍕 Gráfico de Pizza - Distribuição</h3>
-          </div>
-          <div className="chart-description">
-            Proporção por categoria (Top 8)
-          </div>
-          <div className="chart-wrapper">
-            <Pie
-              data={pieChartData}
-              options={{
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                  legend: {
-                    display: true,
-                    position: 'right',
-                    labels: {
-                      boxWidth: 15,
-                      padding: 10,
-                      font: { size: 11 }
-                    }
-                  },
-                  tooltip: {
-                    callbacks: {
-                      label: (context) => {
-                        const value = context.parsed;
-                        const percentage = stats.totalIncome > 0
-                          ? ((value / stats.totalIncome) * 100).toFixed(1)
-                          : 0;
-                        return `R$ ${value.toFixed(2)} (${percentage}% da receita)`;
-                      }
-                    }
-                  }
-                }
-              }}
-            />
+          <div className="stat-content">
+            <div className="stat-label">DISTRIBUIÇÃO POR CATEGORIA</div>
+            <div className="category-percentages-list">
+              {stats.categoryPercentages.length > 0 ? (
+                stats.categoryPercentages.map((cat, index) => (
+                  <div key={index} className="category-percentage-item">
+                    <div className="category-percentage-bar-container">
+                      <div
+                        className="category-percentage-bar"
+                        style={{ width: `${cat.percentage}%` }}
+                      ></div>
+                    </div>
+                    <div className="category-percentage-info">
+                      <span className="category-percentage-name">{cat.name}</span>
+                      <span className="category-percentage-value">
+                        {valuesVisible ? `R$ ${cat.amount.toFixed(2)}` : '•••'}
+                        <strong className="category-percentage-percent"> ({cat.percentage}%)</strong>
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="no-data-message">Nenhuma despesa registrada</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
