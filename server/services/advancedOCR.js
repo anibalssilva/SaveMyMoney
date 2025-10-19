@@ -949,14 +949,18 @@ function detectExpenseCategory(establishmentName) {
         if (nameLower.includes(keyword.toLowerCase())) {
           detectedCategory = category;
           console.log(`[CategoryDetection] Matched keyword "${keyword}" → ${category.emoji} ${category.name}`);
-          return detectedCategory;
+          // Remove keywords before returning (frontend doesn't need them)
+          const { keywords, ...categoryWithoutKeywords } = detectedCategory;
+          return categoryWithoutKeywords;
         }
       }
     }
   }
 
   console.log(`[CategoryDetection] No match found, using default: ${detectedCategory.emoji} ${detectedCategory.name}`);
-  return detectedCategory;
+  // Remove keywords before returning (frontend doesn't need them)
+  const { keywords, ...categoryWithoutKeywords } = detectedCategory;
+  return categoryWithoutKeywords;
 }
 
 /**
@@ -1015,21 +1019,22 @@ function extractExpectedItemCount(text) {
 
 /**
  * Get all available expense categories for frontend dropdown
+ * Note: Subcategories removed for simplicity - can be added back if needed
  */
 function getExpenseCategories() {
   return [
-    { id: 'moradia', name: 'Moradia', emoji: '🏠', subcategories: ['Aluguel/Prestação', 'Condomínio', 'IPTU', 'Seguro residencial', 'Manutenção e reparos'] },
-    { id: 'contas_fixas', name: 'Contas fixas', emoji: '⚡', subcategories: ['Energia elétrica', 'Água e esgoto', 'Gás', 'Internet', 'Telefone', 'TV/Streaming'] },
-    { id: 'alimentacao', name: 'Alimentação', emoji: '🛒', subcategories: ['Supermercado', 'Açougue/Padaria/Hortifrúti', 'Delivery/Restaurantes', 'Feira livre'] },
-    { id: 'transporte', name: 'Transporte', emoji: '🚗', subcategories: ['Combustível', 'Transporte público', 'Estacionamento', 'IPVA/Licenciamento', 'Seguro veículo', 'Manutenção'] },
-    { id: 'saude', name: 'Saúde', emoji: '💊', subcategories: ['Plano de saúde', 'Medicamentos', 'Consultas/Exames', 'Academia'] },
-    { id: 'pessoais', name: 'Pessoais e higiene', emoji: '👕', subcategories: ['Produtos de higiene', 'Cuidados pessoais', 'Roupas e calçados'] },
-    { id: 'educacao', name: 'Educação', emoji: '🎓', subcategories: ['Mensalidade', 'Cursos e materiais', 'Livros e assinaturas'] },
-    { id: 'filhos', name: 'Filhos e dependentes', emoji: '👶', subcategories: ['Fraldas/Leite/Roupas', 'Escola/Transporte', 'Atividades extracurriculares'] },
-    { id: 'financeiras', name: 'Financeiras', emoji: '💳', subcategories: ['Cartão de crédito', 'Financiamentos', 'Empréstimos', 'Poupança/Investimentos'] },
-    { id: 'lazer', name: 'Lazer e bem-estar', emoji: '🎉', subcategories: ['Viagens e passeios', 'Cinema/Teatro/Shows', 'Assinaturas', 'Presentes e festas'] },
-    { id: 'pets', name: 'Pets', emoji: '🐾', subcategories: ['Ração e petiscos', 'Veterinário', 'Banho e tosa', 'Acessórios'] },
-    { id: 'outras', name: 'Outras eventuais', emoji: '💡', subcategories: ['Doações', 'Multas e taxas', 'Manutenção equipamentos', 'Serviços domésticos'] }
+    { id: 'moradia', name: 'Moradia', emoji: '🏠' },
+    { id: 'contas_fixas', name: 'Contas fixas', emoji: '⚡' },
+    { id: 'alimentacao', name: 'Alimentação', emoji: '🛒' },
+    { id: 'transporte', name: 'Transporte', emoji: '🚗' },
+    { id: 'saude', name: 'Saúde', emoji: '💊' },
+    { id: 'pessoais', name: 'Pessoais e higiene', emoji: '👕' },
+    { id: 'educacao', name: 'Educação', emoji: '🎓' },
+    { id: 'filhos', name: 'Filhos e dependentes', emoji: '👶' },
+    { id: 'financeiras', name: 'Financeiras', emoji: '💳' },
+    { id: 'lazer', name: 'Lazer e bem-estar', emoji: '🎉' },
+    { id: 'pets', name: 'Pets', emoji: '🐾' },
+    { id: 'outras', name: 'Outras eventuais', emoji: '💡' }
   ];
 }
 
