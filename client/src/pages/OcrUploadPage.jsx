@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import { uploadReceipt, saveOcrTransactions } from '../services/api';
-import axios from 'axios';
+import api from '../services/api';
 import './OcrUploadPage.css';
 
 const OcrUploadPage = () => {
@@ -27,11 +27,8 @@ const OcrUploadPage = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const token = localStorage.getItem('token');
         console.log('🔍 Fetching categories from API...');
-        const response = await axios.get('/api/transactions/categories', {
-          headers: { 'x-auth-token': token }
-        });
+        const response = await api.get('/transactions/categories');
         console.log('✅ Categories API response:', response.data);
         console.log('✅ Is array?', Array.isArray(response.data));
         console.log('✅ Length:', response.data?.length);
