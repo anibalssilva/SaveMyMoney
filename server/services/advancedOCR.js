@@ -1050,7 +1050,6 @@ function extractExpectedItemCount(text) {
 
 /**
  * Get all available expense categories for frontend dropdown
- * Note: Subcategories removed for simplicity - can be added back if needed
  */
 function getExpenseCategories() {
   return [
@@ -1069,6 +1068,23 @@ function getExpenseCategories() {
   ];
 }
 
+/**
+ * Get all available income categories for frontend dropdown
+ */
+function getIncomeCategories() {
+  return [
+    { id: 'salario', name: 'Salário', emoji: '💰' },
+    { id: 'freelance', name: 'Freelance', emoji: '💼' },
+    { id: 'investimentos', name: 'Investimentos', emoji: '📈' },
+    { id: 'aluguel', name: 'Aluguel recebido', emoji: '🏘️' },
+    { id: 'pensao', name: 'Pensão', emoji: '👨‍👩‍👧' },
+    { id: 'premio', name: 'Prêmios e bônus', emoji: '🎁' },
+    { id: 'vendas', name: 'Vendas', emoji: '🛍️' },
+    { id: 'restituicao', name: 'Restituição', emoji: '💵' },
+    { id: 'outras_receitas', name: 'Outras receitas', emoji: '💡' }
+  ];
+}
+
 module.exports = {
   extractReceiptData,
   preprocessImage,
@@ -1076,4 +1092,5 @@ module.exports = {
   extractWithOpenAI,
   parseReceiptText,
   getExpenseCategories,
+  getIncomeCategories,
 };

@@ -8,7 +8,7 @@ const xlsx = require('xlsx');
 const multer = require('multer');
 const { createWorker } = require('tesseract.js');
 const pdf = require('pdf-parse');
-const { extractReceiptData, getExpenseCategories } = require('../../services/advancedOCR');
+const { extractReceiptData, getExpenseCategories, getIncomeCategories } = require('../../services/advancedOCR');
 const { getSubcategoriesByCategory, detectSubcategory } = require('../../services/subcategoryDetector');
 
 const Transaction = require('../../models/Transaction');
@@ -237,6 +237,19 @@ router.get('/categories', auth, (req, res) => {
   } catch (err) {
     console.error('❌ Error fetching categories:', err.message);
     res.status(500).json({ msg: 'Erro ao buscar categorias' });
+  }
+});
+
+// @route   GET api/transactions/income-categories
+// @desc    Get all available income categories
+// @access  Private
+router.get('/income-categories', auth, (req, res) => {
+  try {
+    const categories = getIncomeCategories();
+    res.json(categories);
+  } catch (err) {
+    console.error('❌ Error fetching income categories:', err.message);
+    res.status(500).json({ msg: 'Erro ao buscar categorias de receita' });
   }
 });
 

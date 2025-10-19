@@ -14,6 +14,8 @@ const TransactionsPage = ({ setAlert }) => {
     category: '',
     subcategoryId: '',
     type: 'expense',
+    isRecurring: false,
+    recurrenceCount: 1,
   });
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -22,6 +24,7 @@ const TransactionsPage = ({ setAlert }) => {
 
   // Categories and subcategories
   const [availableCategories, setAvailableCategories] = useState([]);
+  const [incomeCategories, setIncomeCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
 
   // Filters
@@ -38,8 +41,12 @@ const TransactionsPage = ({ setAlert }) => {
   // Load categories from API
   const loadCategories = async () => {
     try {
-      const response = await api.get('/transactions/categories');
-      setAvailableCategories(response.data);
+      const [expenseRes, incomeRes] = await Promise.all([
+        api.get('/transactions/categories'),
+        api.get('/transactions/income-categories')
+      ]);
+      setAvailableCategories(expenseRes.data);
+      setIncomeCategories(incomeRes.data);
     } catch (error) {
       console.error('Error loading categories:', error);
     }
@@ -133,7 +140,20 @@ const TransactionsPage = ({ setAlert }) => {
   }, [filteredTransactions]);
 
   const onChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+
+    // Handle checkbox
+    if (type === 'checkbox') {
+      setFormData({ ...formData, [name]: checked });
+      return;
+    }
+
+    // If type changed, reset category and subcategory
+    if (name === 'type') {
+      setFormData({ ...formData, [name]: value, category: '', subcategoryId: '' });
+      setSubcategories([]);
+      return;
+    }
 
     // If category changed, load subcategories
     if (name === 'category') {
@@ -159,22 +179,52 @@ const TransactionsPage = ({ setAlert }) => {
           duration: 3000
         });
       } else {
-        const res = await createTransaction(formData);
-        setToast({
-          message: '✅ Transação criada com sucesso!',
-          type: 'success',
-          duration: 3000
-        });
+        // Handle recurring transactions
+        if (formData.isRecurring && formData.type === 'income' && formData.recurrenceCount > 1) {
+          // Create multiple transactions (one for each month)
+          const baseDate = new Date(formData.date);
+          const transactionsToCreate = [];
 
-        // Check for budget alert
-        if (res.data.budgetAlert) {
-          setTimeout(() => {
-            setToast({
-              message: `⚠️ ${res.data.budgetAlert.message}`,
-              type: res.data.budgetAlert.severity === 'danger' ? 'error' : 'warning',
-              duration: 8000
+          for (let i = 0; i < formData.recurrenceCount; i++) {
+            const transactionDate = new Date(baseDate);
+            transactionDate.setMonth(baseDate.getMonth() + i);
+
+            transactionsToCreate.push({
+              ...formData,
+              date: transactionDate.toISOString().split('T')[0],
+              // Remove recurrence fields from the transaction data
+              isRecurring: undefined,
+              recurrenceCount: undefined
             });
-          }, 3500);
+          }
+
+          // Create all transactions
+          await Promise.all(transactionsToCreate.map(t => createTransaction(t)));
+
+          setToast({
+            message: `✅ ${formData.recurrenceCount} transações recorrentes criadas com sucesso!`,
+            type: 'success',
+            duration: 4000
+          });
+        } else {
+          // Single transaction
+          const res = await createTransaction(formData);
+          setToast({
+            message: '✅ Transação criada com sucesso!',
+            type: 'success',
+            duration: 3000
+          });
+
+          // Check for budget alert
+          if (res.data.budgetAlert) {
+            setTimeout(() => {
+              setToast({
+                message: `⚠️ ${res.data.budgetAlert.message}`,
+                type: res.data.budgetAlert.severity === 'danger' ? 'error' : 'warning',
+                duration: 8000
+              });
+            }, 3500);
+          }
         }
       }
 
@@ -197,6 +247,8 @@ const TransactionsPage = ({ setAlert }) => {
       category: '',
       subcategoryId: '',
       type: 'expense',
+      isRecurring: false,
+      recurrenceCount: 1,
     });
     setEditingId(null);
     setShowForm(false);
@@ -372,6 +424,36 @@ const TransactionsPage = ({ setAlert }) => {
               </div>
 
               <div className="form-group">
+                <label>Tipo</label>
+                <div className="radio-group">
+                  <label className={`radio-label ${formData.type === 'expense' ? 'active' : ''}`}>
+                    <input
+                      type="radio"
+                      name="type"
+                      value="expense"
+                      checked={formData.type === 'expense'}
+                      onChange={onChange}
+                    />
+                    <span className="radio-icon">💸</span>
+                    Despesa
+                  </label>
+                  <label className={`radio-label ${formData.type === 'income' ? 'active' : ''}`}>
+                    <input
+                      type="radio"
+                      name="type"
+                      value="income"
+                      checked={formData.type === 'income'}
+                      onChange={onChange}
+                    />
+                    <span className="radio-icon">💰</span>
+                    Receita
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
                 <label>Categoria</label>
                 <select
                   name="category"
@@ -381,7 +463,7 @@ const TransactionsPage = ({ setAlert }) => {
                   className="category-select"
                 >
                   <option value="">Selecione uma categoria</option>
-                  {availableCategories.map(cat => (
+                  {(formData.type === 'income' ? incomeCategories : availableCategories).map(cat => (
                     <option key={cat.id} value={cat.id}>
                       {cat.emoji} {cat.name}
                     </option>
@@ -390,8 +472,8 @@ const TransactionsPage = ({ setAlert }) => {
               </div>
             </div>
 
-            {/* Subcategory row - only show when category is selected */}
-            {formData.category && subcategories.length > 0 && (
+            {/* Subcategory row - only show when category is selected AND type is expense */}
+            {formData.type === 'expense' && formData.category && subcategories.length > 0 && (
               <div className="form-row">
                 <div className="form-group">
                   <label>Subcategoria</label>
@@ -411,33 +493,43 @@ const TransactionsPage = ({ setAlert }) => {
               </div>
             )}
 
-            <div className="form-group">
-              <label>Tipo</label>
-              <div className="radio-group">
-                <label className={`radio-label ${formData.type === 'expense' ? 'active' : ''}`}>
-                  <input
-                    type="radio"
-                    name="type"
-                    value="expense"
-                    checked={formData.type === 'expense'}
-                    onChange={onChange}
-                  />
-                  <span className="radio-icon">💸</span>
-                  Despesa
-                </label>
-                <label className={`radio-label ${formData.type === 'income' ? 'active' : ''}`}>
-                  <input
-                    type="radio"
-                    name="type"
-                    value="income"
-                    checked={formData.type === 'income'}
-                    onChange={onChange}
-                  />
-                  <span className="radio-icon">💰</span>
-                  Receita
-                </label>
+            {/* Recurrence section - only show for income */}
+            {formData.type === 'income' && !editingId && (
+              <div className="form-row recurrence-section">
+                <div className="form-group recurrence-checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      name="isRecurring"
+                      checked={formData.isRecurring}
+                      onChange={onChange}
+                    />
+                    <span className="checkbox-text">🔄 Receita recorrente</span>
+                  </label>
+                  <p className="help-text">
+                    Marque se esta receita se repete todos os meses
+                  </p>
+                </div>
+
+                {formData.isRecurring && (
+                  <div className="form-group">
+                    <label>Quantidade de repetições</label>
+                    <input
+                      type="number"
+                      name="recurrenceCount"
+                      value={formData.recurrenceCount}
+                      onChange={onChange}
+                      min="1"
+                      max="12"
+                      placeholder="Ex: 12 (para 12 meses)"
+                    />
+                    <p className="help-text">
+                      Número de meses que esta receita vai se repetir (máximo 12)
+                    </p>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
 
             <div className="form-actions">
               <button type="button" className="btn-cancel" onClick={resetForm}>
