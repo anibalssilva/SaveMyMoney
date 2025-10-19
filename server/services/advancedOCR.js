@@ -202,7 +202,7 @@ async function extractWithOpenAI(imageBuffer) {
           ],
         },
       ],
-      max_tokens: 2500,
+      max_tokens: 8000, // Increased to handle large receipts (50+ items)
       temperature: 0.1, // Low temperature for consistent, factual extraction
     });
 
