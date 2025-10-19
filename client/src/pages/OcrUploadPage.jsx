@@ -423,7 +423,7 @@ const OcrUploadPage = () => {
             </div>
           )}
 
-          {/* Category Selector */}
+          {/* Category Selector - ALWAYS SHOW if categories loaded */}
           {categories.length > 0 && (
             <div className="category-card">
               <h4 className="category-header">📂 Categoria da Despesa</h4>
@@ -431,21 +431,21 @@ const OcrUploadPage = () => {
                 {selectedCategory && (
                   <div className="auto-category-badge">
                     <span className="auto-category-label">
-                      {selectedCategory.id === 'outras' ? 'Categoria:' : 'Auto-detectado:'}
+                      {selectedCategory.id === 'outras' ? 'Categoria padrão:' : 'Auto-detectado:'}
                     </span>
                     <span className="auto-category-value">
                       {selectedCategory.emoji} {selectedCategory.name}
                     </span>
                     {extractedMetadata?.establishmentName && selectedCategory.id !== 'outras' && (
                       <span className="establishment-name">
-                        ({extractedMetadata.establishmentName})
+                        (baseado em: {extractedMetadata.establishmentName})
                       </span>
                     )}
                   </div>
                 )}
                 <div className="category-selector">
                   <label htmlFor="category-dropdown" className="category-label">
-                    {selectedCategory ? 'Alterar categoria:' : 'Selecione a categoria:'}
+                    Alterar categoria manualmente:
                   </label>
                   <select
                     id="category-dropdown"
@@ -453,7 +453,7 @@ const OcrUploadPage = () => {
                     onChange={(e) => applyCategoryToAll(e.target.value)}
                     className="category-dropdown"
                   >
-                    {Array.isArray(categories) && categories.map(cat => (
+                    {categories.map(cat => (
                       <option key={cat.id} value={cat.id}>
                         {cat.emoji} {cat.name}
                       </option>

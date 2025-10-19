@@ -510,11 +510,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-md);
   border: 2px solid var(--border-color);
   transition: all var(--transition-base);
   position: relative;
-  overflow: hidden;
-  cursor: pointer;
+  overflow: visible;
   user-select: none;
 }
 
@@ -527,8 +527,7 @@
 .item-checkbox-wrapper {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
-  flex: 1;
+  flex-shrink: 0;
 }
 
 .item-checkbox {
@@ -825,14 +824,11 @@ body.dark .item-row {
 }
 
 /* ===== ITEM EDITING ===== */
-.item-row {
-  gap: var(--space-md);
-}
-
 .item-row-editing {
   border-color: var(--cyber-warning);
   background: rgba(255, 193, 7, 0.05);
   box-shadow: 0 0 0 1px var(--cyber-warning);
+  flex-wrap: nowrap;
 }
 
 .item-content {
@@ -842,6 +838,7 @@ body.dark .item-row {
   align-items: center;
   gap: var(--space-lg);
   cursor: pointer;
+  min-width: 0;
 }
 
 .item-edit-mode {
@@ -849,6 +846,8 @@ body.dark .item-row {
   display: flex;
   gap: var(--space-md);
   align-items: center;
+  min-width: 0;
+  flex-wrap: nowrap;
 }
 
 .item-edit-input {
