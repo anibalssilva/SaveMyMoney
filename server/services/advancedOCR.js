@@ -191,7 +191,10 @@ async function extractWithOpenAI(imageBuffer) {
             Validação: some total dos itens e compare com o total do cupom (quando presente). Informe checks.sum_items, checks.declared_total, checks.delta. Aceite |delta| ≤ 0.05.
 
             Saída exclusivamente o JSON final, sem explicações.`
-            },
+        },
+        {
+          role: 'user',
+          content: [
             {
               type: 'image_url',
               image_url: {
