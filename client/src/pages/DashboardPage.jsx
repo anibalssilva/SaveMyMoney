@@ -1,18 +1,48 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Bar, Line, Pie } from 'react-chartjs-2';
 import api from '../services/api';
 import Toast from '../components/Toast';
 import './DashboardPage.css';
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const DashboardPage = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  const [valuesVisible, setValuesVisible] = useState(true);
 
   // Filtros
-  const [selectedType, setSelectedType] = useState('all'); // all, expense, income
+  const [selectedType, setSelectedType] = useState('expense'); // all, expense, income
   const [selectedMonth, setSelectedMonth] = useState('all'); // all, 2025-01, etc
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [groupBy, setGroupBy] = useState('category'); // category, date, type
+  const [selectedYear, setSelectedYear] = useState('all');
+
+  // Chart options
+  const [barChartMode, setBarChartMode] = useState('category'); // 'category' or 'subcategory'
+  const [barChartCategory, setBarChartCategory] = useState('all'); // for subcategory mode
 
   useEffect(() => {
     fetchTransactions();
@@ -35,6 +65,16 @@ const DashboardPage = () => {
     }
   };
 
+  // Get unique years from transactions
+  const availableYears = useMemo(() => {
+    const years = new Set();
+    transactions.forEach(t => {
+      const date = new Date(t.date);
+      years.add(date.getFullYear());
+    });
+    return Array.from(years).sort().reverse();
+  }, [transactions]);
+
   // Get unique months from transactions
   const availableMonths = useMemo(() => {
     const months = new Set();
@@ -46,11 +86,13 @@ const DashboardPage = () => {
     return Array.from(months).sort().reverse();
   }, [transactions]);
 
-  // Get unique categories
-  const availableCategories = useMemo(() => {
+  // Get unique categories for bar chart filter
+  const expenseCategories = useMemo(() => {
     const categories = new Set();
     transactions.forEach(t => {
-      if (t.category) categories.add(t.category);
+      if (t.type === 'expense' && t.category) {
+        categories.add(t.category);
+      }
     });
     return Array.from(categories).sort();
   }, [transactions]);
@@ -68,47 +110,15 @@ const DashboardPage = () => {
         if (tMonthKey !== selectedMonth) return false;
       }
 
-      // Category filter
-      if (selectedCategory !== 'all' && t.category !== selectedCategory) return false;
+      // Year filter
+      if (selectedYear !== 'all') {
+        const tDate = new Date(t.date);
+        if (tDate.getFullYear() !== parseInt(selectedYear)) return false;
+      }
 
       return true;
     });
-  }, [transactions, selectedType, selectedMonth, selectedCategory]);
-
-  // Group transactions
-  const groupedData = useMemo(() => {
-    const groups = {};
-
-    filteredTransactions.forEach(t => {
-      let key;
-
-      if (groupBy === 'category') {
-        key = t.category || 'Sem Categoria';
-      } else if (groupBy === 'date') {
-        const date = new Date(t.date);
-        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      } else if (groupBy === 'type') {
-        key = t.type === 'expense' ? 'Despesas' : 'Receitas';
-      }
-
-      if (!groups[key]) {
-        groups[key] = {
-          items: [],
-          total: 0,
-          count: 0
-        };
-      }
-
-      groups[key].items.push(t);
-      groups[key].total += t.amount;
-      groups[key].count += 1;
-    });
-
-    // Convert to array and sort by total
-    return Object.entries(groups)
-      .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => b.total - a.total);
-  }, [filteredTransactions, groupBy]);
+  }, [transactions, selectedType, selectedMonth, selectedYear]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -123,12 +133,168 @@ const DashboardPage = () => {
       totalExpenses,
       totalIncome,
       balance,
+      totalTransactions: filteredTransactions.length,
       expenseCount: expenses.length,
       incomeCount: incomes.length,
-      avgExpense: expenses.length > 0 ? totalExpenses / expenses.length : 0,
-      avgIncome: incomes.length > 0 ? totalIncome / incomes.length : 0
     };
   }, [filteredTransactions]);
+
+  // Bar Chart Data - Category or Subcategory
+  const barChartData = useMemo(() => {
+    const expenses = filteredTransactions.filter(t => t.type === 'expense');
+
+    if (barChartMode === 'category') {
+      // Group by category
+      const categoryTotals = {};
+      expenses.forEach(t => {
+        const cat = t.category || 'Sem Categoria';
+        categoryTotals[cat] = (categoryTotals[cat] || 0) + t.amount;
+      });
+
+      // Sort and take top 10
+      const sorted = Object.entries(categoryTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+
+      return {
+        labels: sorted.map(([name]) => name),
+        datasets: [{
+          label: 'Despesas',
+          data: sorted.map(([, amount]) => amount),
+          backgroundColor: 'rgba(239, 68, 68, 0.8)',
+          borderColor: 'rgba(239, 68, 68, 1)',
+          borderWidth: 2,
+        }]
+      };
+    } else {
+      // Group by subcategory for selected category
+      const filtered = barChartCategory === 'all'
+        ? expenses
+        : expenses.filter(t => t.category === barChartCategory);
+
+      const subcategoryTotals = {};
+      filtered.forEach(t => {
+        const subcat = t.subcategoryId || 'outros';
+        subcategoryTotals[subcat] = (subcategoryTotals[subcat] || 0) + t.amount;
+      });
+
+      const sorted = Object.entries(subcategoryTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+
+      return {
+        labels: sorted.map(([name]) => name),
+        datasets: [{
+          label: 'Gastos por Subcategoria',
+          data: sorted.map(([, amount]) => amount),
+          backgroundColor: 'rgba(239, 68, 68, 0.8)',
+          borderColor: 'rgba(239, 68, 68, 1)',
+          borderWidth: 2,
+        }]
+      };
+    }
+  }, [filteredTransactions, barChartMode, barChartCategory]);
+
+  // Line Chart Data - Monthly expenses and income evolution
+  const lineChartData = useMemo(() => {
+    // Group by month
+    const monthlyData = {};
+
+    transactions.forEach(t => {
+      const date = new Date(t.date);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = { expenses: 0, income: 0 };
+      }
+
+      if (t.type === 'expense') {
+        monthlyData[monthKey].expenses += t.amount;
+      } else {
+        monthlyData[monthKey].income += t.amount;
+      }
+    });
+
+    // Sort months
+    const sortedMonths = Object.keys(monthlyData).sort();
+
+    // Format month names
+    const labels = sortedMonths.map(monthKey => {
+      const [year, month] = monthKey.split('-');
+      const date = new Date(year, month - 1);
+      return date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+    });
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Despesas',
+          data: sortedMonths.map(month => monthlyData[month].expenses),
+          borderColor: 'rgba(239, 68, 68, 1)',
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          tension: 0.4,
+          pointRadius: 6,
+          pointHoverRadius: 8,
+        },
+        {
+          label: 'Receitas',
+          data: sortedMonths.map(month => monthlyData[month].income),
+          borderColor: 'rgba(34, 197, 94, 1)',
+          backgroundColor: 'rgba(34, 197, 94, 0.1)',
+          tension: 0.4,
+          pointRadius: 6,
+          pointHoverRadius: 8,
+        }
+      ]
+    };
+  }, [transactions]);
+
+  // Pie Chart Data - Expense categories vs total income with percentages
+  const pieChartData = useMemo(() => {
+    const expenses = filteredTransactions.filter(t => t.type === 'expense');
+    const totalIncome = stats.totalIncome;
+
+    // Group by category
+    const categoryTotals = {};
+    expenses.forEach(t => {
+      const cat = t.category || 'Sem Categoria';
+      categoryTotals[cat] = (categoryTotals[cat] || 0) + t.amount;
+    });
+
+    // Sort and take top 8
+    const sorted = Object.entries(categoryTotals)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8);
+
+    // Calculate percentages relative to total income
+    const labels = sorted.map(([name, amount]) => {
+      const percentage = totalIncome > 0 ? (amount / totalIncome * 100).toFixed(1) : 0;
+      return `${name} (${percentage}%)`;
+    });
+
+    const colors = [
+      'rgba(239, 68, 68, 0.8)',
+      'rgba(34, 197, 94, 0.8)',
+      'rgba(59, 130, 246, 0.8)',
+      'rgba(251, 191, 36, 0.8)',
+      'rgba(168, 85, 247, 0.8)',
+      'rgba(236, 72, 153, 0.8)',
+      'rgba(20, 184, 166, 0.8)',
+      'rgba(249, 115, 22, 0.8)',
+    ];
+
+    return {
+      labels,
+      datasets: [{
+        label: 'Comprometimento da Receita',
+        data: sorted.map(([, amount]) => amount),
+        backgroundColor: colors,
+        borderColor: colors.map(c => c.replace('0.8', '1')),
+        borderWidth: 2,
+      }]
+    };
+  }, [filteredTransactions, stats.totalIncome]);
 
   // Format month name
   const getMonthName = (monthKey) => {
@@ -136,29 +302,6 @@ const DashboardPage = () => {
     const [year, month] = monthKey.split('-');
     const date = new Date(year, month - 1);
     return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  };
-
-  // Get group icon
-  const getGroupIcon = (groupName) => {
-    if (groupBy === 'type') {
-      return groupName === 'Despesas' ? '💸' : '💰';
-    } else if (groupBy === 'date') {
-      return '📅';
-    } else {
-      // Category icons
-      const iconMap = {
-        'Alimentação': '🍔',
-        'Transporte': '🚗',
-        'Saúde': '🏥',
-        'Educação': '📚',
-        'Lazer': '🎮',
-        'Moradia': '🏠',
-        'Vestuário': '👔',
-        'OCR Upload': '📸',
-        'default': '📦'
-      };
-      return iconMap[groupName] || iconMap['default'];
-    }
   };
 
   if (loading) {
@@ -187,59 +330,80 @@ const DashboardPage = () => {
       <div className="dashboard-header">
         <h1 className="dashboard-title">💎 Dashboard Financeiro</h1>
         <p className="dashboard-subtitle">
-          Visualize e analise suas despesas e receitas
+          Análise visual completa das suas finanças
         </p>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="stats-grid">
+      {/* Statistics Cards - 2x2 Grid */}
+      <div className="stats-grid-2x2">
         <div className="stat-card stat-card-income">
-          <div className="stat-icon">💰</div>
+          <div className="stat-header">
+            <div className="stat-icon">💰</div>
+            <button
+              className="toggle-values-btn"
+              onClick={() => setValuesVisible(!valuesVisible)}
+              title={valuesVisible ? 'Ocultar valores' : 'Mostrar valores'}
+            >
+              {valuesVisible ? '👁️' : '👁️‍🗨️'}
+            </button>
+          </div>
           <div className="stat-content">
-            <div className="stat-label">Receitas</div>
-            <div className="stat-value">R$ {stats.totalIncome.toFixed(2)}</div>
-            <div className="stat-detail">{stats.incomeCount} transação(ões)</div>
+            <div className="stat-label">RECEITAS</div>
+            <div className="stat-value">
+              {valuesVisible ? `R$ ${stats.totalIncome.toFixed(2)}` : '••••••'}
+            </div>
+            <div className="stat-detail">{stats.incomeCount} transações</div>
           </div>
         </div>
 
         <div className="stat-card stat-card-expense">
-          <div className="stat-icon">💸</div>
+          <div className="stat-header">
+            <div className="stat-icon">💸</div>
+          </div>
           <div className="stat-content">
-            <div className="stat-label">Despesas</div>
-            <div className="stat-value">R$ {stats.totalExpenses.toFixed(2)}</div>
-            <div className="stat-detail">{stats.expenseCount} transação(ões)</div>
+            <div className="stat-label">DESPESAS</div>
+            <div className="stat-value">
+              {valuesVisible ? `R$ ${stats.totalExpenses.toFixed(2)}` : '••••••'}
+            </div>
+            <div className="stat-detail">{stats.expenseCount} transações</div>
           </div>
         </div>
 
         <div className={`stat-card stat-card-balance ${stats.balance >= 0 ? 'positive' : 'negative'}`}>
-          <div className="stat-icon">{stats.balance >= 0 ? '✅' : '⚠️'}</div>
+          <div className="stat-header">
+            <div className="stat-icon">{stats.balance >= 0 ? '✅' : '⚠️'}</div>
+          </div>
           <div className="stat-content">
-            <div className="stat-label">Saldo</div>
-            <div className="stat-value">R$ {stats.balance.toFixed(2)}</div>
+            <div className="stat-label">SALDO</div>
+            <div className="stat-value">
+              {valuesVisible ? `R$ ${stats.balance.toFixed(2)}` : '••••••'}
+            </div>
             <div className="stat-detail">{stats.balance >= 0 ? 'Positivo' : 'Negativo'}</div>
           </div>
         </div>
 
-        <div className="stat-card stat-card-info">
-          <div className="stat-icon">📊</div>
+        <div className="stat-card stat-card-total">
+          <div className="stat-header">
+            <div className="stat-icon">📊</div>
+          </div>
           <div className="stat-content">
-            <div className="stat-label">Total</div>
-            <div className="stat-value">{filteredTransactions.length}</div>
-            <div className="stat-detail">transações</div>
+            <div className="stat-label">TOTAL</div>
+            <div className="stat-value">{stats.totalTransactions}</div>
+            <div className="stat-detail">transações filtradas</div>
           </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="filters-section">
+      {/* Filters - Below cards */}
+      <div className="filters-section-below">
         <div className="filters-header">
           <h3>🔍 Filtros</h3>
         </div>
 
-        <div className="filters-grid">
+        <div className="filters-grid-horizontal">
           {/* Type Filter */}
           <div className="filter-group">
-            <label className="filter-label">Tipo</label>
+            <label className="filter-label">TIPO</label>
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
@@ -253,7 +417,7 @@ const DashboardPage = () => {
 
           {/* Month Filter */}
           <div className="filter-group">
-            <label className="filter-label">Mês</label>
+            <label className="filter-label">MÊS</label>
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
@@ -268,112 +432,161 @@ const DashboardPage = () => {
             </select>
           </div>
 
-          {/* Category Filter */}
+          {/* Year Filter */}
           <div className="filter-group">
-            <label className="filter-label">Categoria</label>
+            <label className="filter-label">ANO</label>
             <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
               className="filter-select"
             >
-              <option value="all">Todas as Categorias</option>
-              {availableCategories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
+              <option value="all">Todos os Anos</option>
+              {availableYears.map(year => (
+                <option key={year} value={year}>{year}</option>
               ))}
             </select>
           </div>
-
-          {/* Group By */}
-          <div className="filter-group">
-            <label className="filter-label">Agrupar Por</label>
-            <select
-              value={groupBy}
-              onChange={(e) => setGroupBy(e.target.value)}
-              className="filter-select"
-            >
-              <option value="category">Categoria</option>
-              <option value="date">Mês</option>
-              <option value="type">Tipo</option>
-            </select>
-          </div>
         </div>
-
-        {/* Clear Filters */}
-        {(selectedType !== 'all' || selectedMonth !== 'all' || selectedCategory !== 'all') && (
-          <button
-            onClick={() => {
-              setSelectedType('all');
-              setSelectedMonth('all');
-              setSelectedCategory('all');
-            }}
-            className="clear-filters-btn"
-          >
-            ❌ Limpar Filtros
-          </button>
-        )}
       </div>
 
-      {/* Grouped Data */}
-      {groupedData.length > 0 ? (
-        <div className="grouped-data-section">
-          <div className="section-header">
-            <h3>📊 Dados Agrupados por {groupBy === 'category' ? 'Categoria' : groupBy === 'date' ? 'Mês' : 'Tipo'}</h3>
-            <span className="group-count">{groupedData.length} grupo(s)</span>
-          </div>
+      {/* Charts Section */}
+      <div className="charts-section">
+        {/* Bar Chart */}
+        <div className="chart-card chart-card-full">
+          <div className="chart-header">
+            <h3>📊 Gráfico de Barras - Por Categoria</h3>
+            <div className="chart-controls">
+              <select
+                value={barChartMode}
+                onChange={(e) => setBarChartMode(e.target.value)}
+                className="chart-select"
+              >
+                <option value="category">Agrupado por Categorias</option>
+                <option value="subcategory">Gastos por Subcategoria</option>
+              </select>
 
-          <div className="groups-grid">
-            {groupedData.map((group, index) => (
-              <div key={index} className="group-card">
-                <div className="group-header">
-                  <div className="group-title">
-                    <span className="group-icon">{getGroupIcon(group.name)}</span>
-                    <span className="group-name">{group.name}</span>
-                  </div>
-                  <div className="group-count-badge">{group.count}</div>
-                </div>
-
-                <div className="group-total">
-                  <span className="group-total-label">Total:</span>
-                  <span className="group-total-value">R$ {group.total.toFixed(2)}</span>
-                </div>
-
-                {/* Progress bar */}
-                <div className="group-progress">
-                  <div
-                    className="group-progress-fill"
-                    style={{ width: `${(group.total / stats.totalExpenses) * 100}%` }}
-                  />
-                </div>
-
-                <div className="group-percentage">
-                  {((group.total / stats.totalExpenses) * 100).toFixed(1)}% do total
-                </div>
-
-                {/* Items preview */}
-                <div className="group-items-preview">
-                  {group.items.slice(0, 3).map((item, idx) => (
-                    <div key={idx} className="preview-item">
-                      <span className="preview-desc">{item.description}</span>
-                      <span className="preview-amount">R$ {item.amount.toFixed(2)}</span>
-                    </div>
+              {barChartMode === 'subcategory' && (
+                <select
+                  value={barChartCategory}
+                  onChange={(e) => setBarChartCategory(e.target.value)}
+                  className="chart-select"
+                >
+                  <option value="all">Todas as Categorias</option>
+                  {expenseCategories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
                   ))}
-                  {group.items.length > 3 && (
-                    <div className="preview-more">
-                      +{group.items.length - 3} mais
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+                </select>
+              )}
+            </div>
+          </div>
+          <div className="chart-description">
+            Top 10 categorias com maiores valores
+          </div>
+          <div className="chart-wrapper">
+            <Bar
+              data={barChartData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
+                plugins: {
+                  legend: { display: true, position: 'top' },
+                  tooltip: {
+                    callbacks: {
+                      label: (context) => `R$ ${context.parsed.y.toFixed(2)}`
+                    }
+                  }
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: {
+                      callback: (value) => `R$ ${value.toFixed(0)}`
+                    }
+                  }
+                }
+              }}
+            />
           </div>
         </div>
-      ) : (
-        <div className="empty-state">
-          <div className="empty-icon">📊</div>
-          <h3>Nenhuma transação encontrada</h3>
-          <p>Ajuste os filtros ou adicione novas transações</p>
+
+        {/* Line Chart */}
+        <div className="chart-card chart-card-full">
+          <div className="chart-header">
+            <h3>📈 Gráfico de Linhas - Evolução Temporal</h3>
+          </div>
+          <div className="chart-description">
+            Valores ao longo do tempo
+          </div>
+          <div className="chart-wrapper">
+            <Line
+              data={lineChartData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
+                plugins: {
+                  legend: { display: true, position: 'top' },
+                  tooltip: {
+                    callbacks: {
+                      label: (context) => `${context.dataset.label}: R$ ${context.parsed.y.toFixed(2)}`
+                    }
+                  }
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: {
+                      callback: (value) => `R$ ${value.toFixed(0)}`
+                    }
+                  }
+                }
+              }}
+            />
+          </div>
         </div>
-      )}
+
+        {/* Pie Chart */}
+        <div className="chart-card chart-card-half">
+          <div className="chart-header">
+            <h3>🍕 Gráfico de Pizza - Distribuição</h3>
+          </div>
+          <div className="chart-description">
+            Proporção por categoria (Top 8)
+          </div>
+          <div className="chart-wrapper">
+            <Pie
+              data={pieChartData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                  legend: {
+                    display: true,
+                    position: 'right',
+                    labels: {
+                      boxWidth: 15,
+                      padding: 10,
+                      font: { size: 11 }
+                    }
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: (context) => {
+                        const value = context.parsed;
+                        const percentage = stats.totalIncome > 0
+                          ? ((value / stats.totalIncome) * 100).toFixed(1)
+                          : 0;
+                        return `R$ ${value.toFixed(2)} (${percentage}% da receita)`;
+                      }
+                    }
+                  }
+                }
+              }}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

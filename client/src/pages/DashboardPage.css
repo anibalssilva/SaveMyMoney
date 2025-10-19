@@ -619,7 +619,8 @@
 /* Print Styles */
 @media print {
   .filters-section,
-  .clear-filters-btn {
+  .clear-filters-btn,
+  .toggle-values-btn {
     display: none;
   }
 
@@ -630,5 +631,224 @@
   .group-card,
   .stat-card {
     break-inside: avoid;
+  }
+}
+
+/* ===== NEW DASHBOARD LAYOUT ===== */
+
+/* 2x2 Grid for Stats Cards */
+.stats-grid-2x2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.stats-grid-2x2 .stat-card {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-md);
+}
+
+.toggle-values-btn {
+  background: rgba(0, 240, 255, 0.1);
+  border: 1px solid var(--cyber-primary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-sm);
+  cursor: pointer;
+  font-size: 1.3rem;
+  transition: all var(--transition-base);
+  color: var(--cyber-primary);
+  line-height: 1;
+}
+
+.toggle-values-btn:hover {
+  background: rgba(0, 240, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.stats-grid-2x2 .stat-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.stats-grid-2x2 .stat-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.stats-grid-2x2 .stat-value {
+  font-size: 2.2rem;
+  margin: var(--space-sm) 0;
+}
+
+/* Filters Section - Below Cards */
+.filters-section-below {
+  background: var(--cyber-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  margin-bottom: var(--space-xl);
+  border: 1px solid var(--cyber-border);
+}
+
+.filters-grid-horizontal {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+}
+
+/* Charts Section */
+.charts-section {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: var(--space-xl);
+}
+
+.chart-card {
+  background: var(--cyber-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  border: 1px solid var(--cyber-border);
+  transition: all var(--transition-base);
+}
+
+.chart-card:hover {
+  box-shadow: 0 12px 32px rgba(0, 240, 255, 0.15);
+  border-color: var(--cyber-primary);
+}
+
+.chart-card-full {
+  grid-column: 1 / -1;
+}
+
+.chart-card-half {
+  grid-column: span 1;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.chart-header h3 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.chart-controls {
+  display: flex;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.chart-select {
+  background: var(--cyber-dark);
+  border: 1px solid var(--cyber-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  color: white;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  font-weight: 600;
+}
+
+.chart-select:hover {
+  border-color: var(--cyber-primary);
+  box-shadow: 0 0 0 2px rgba(0, 240, 255, 0.1);
+}
+
+.chart-select:focus {
+  outline: none;
+  border-color: var(--cyber-primary);
+  box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.2);
+}
+
+.chart-description {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: var(--space-lg);
+  font-style: italic;
+}
+
+.chart-wrapper {
+  position: relative;
+  width: 100%;
+  padding: var(--space-lg);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(0, 240, 255, 0.1);
+  min-height: 300px;
+}
+
+/* Responsive - 2x2 Grid */
+@media (max-width: 1024px) {
+  .stats-grid-2x2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .filters-grid-horizontal {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-card-half {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .stats-grid-2x2 {
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
+
+  .stats-grid-2x2 .stat-value {
+    font-size: 1.8rem;
+  }
+
+  .chart-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .chart-controls {
+    width: 100%;
+  }
+
+  .chart-select {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid-2x2 .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .chart-card {
+    padding: var(--space-lg);
+  }
+
+  .chart-wrapper {
+    padding: var(--space-sm);
   }
 }
