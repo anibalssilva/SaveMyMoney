@@ -31,9 +31,13 @@ const OcrUploadPage = () => {
         const response = await axios.get('/api/transactions/categories', {
           headers: { 'x-auth-token': token }
         });
-        setCategories(response.data);
+        console.log('Fetched categories:', response.data);
+        // Ensure it's always an array
+        const categoriesData = Array.isArray(response.data) ? response.data : [];
+        setCategories(categoriesData);
       } catch (error) {
         console.error('Error fetching categories:', error);
+        setCategories([]); // Fallback to empty array on error
       }
     };
     fetchCategories();
@@ -459,7 +463,7 @@ const OcrUploadPage = () => {
                     onChange={(e) => applyCategoryToAll(e.target.value)}
                     className="category-dropdown"
                   >
-                    {categories.map(cat => (
+                    {Array.isArray(categories) && categories.map(cat => (
                       <option key={cat.id} value={cat.id}>
                         {cat.emoji} {cat.name}
                       </option>
