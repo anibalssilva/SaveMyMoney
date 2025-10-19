@@ -172,194 +172,25 @@ async function extractWithOpenAI(imageBuffer) {
       messages: [
         {
           role: 'system',
-          content: `Você é um especialista em OCR de cupons fiscais brasileiros (NFC-e, SAT, Nota Paulista).
+          content: `Você é um extrator de itens de cupons fiscais brasileiros (NFC-e/SAT).
+            Responda apenas com JSON válido no esquema fornecido.
+            Regras (DEVE):
 
-SUA ÚNICA TAREFA: Extrair TODOS os produtos comprados (nome + valor individual de cada item).
+            Extrair todos os produtos com description, quantity (pode ser decimal), unit_price e total.
 
-REGRAS CRÍTICAS:
-1. NÃO extraia formas de pagamento como se fossem produtos
-2. NÃO extraia totais/subtotais como produtos
-3. NÃO extraia códigos de barras isolados
-4. SEMPRE valide: soma dos itens ≈ total do cupom`
-        },
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: `Analise esta imagem de cupom fiscal e extraia TODOS os produtos comprados.
+            Nunca extrair formas de pagamento, totais/subtotais, tributos, chaves, protocolos, mensagens.
 
-═══════════════════════════════════════════════════════════════════
-📋 ESTRUTURAS COMUNS DE PRODUTOS EM CUPONS BRASILEIROS
-═══════════════════════════════════════════════════════════════════
+            Unir itens em linhas quebradas (código/descrição/quantidades em linhas diferentes).
 
-TIPO 1 - Código e descrição em linhas separadas:
-┌───────────────────────────────────────────────────────────────┐
-│ 001  7891234567890 PRODUTO EXEMPLO MARCA 500G                 │
-│                         1 UN  x  12,50  =           12,50     │
-└───────────────────────────────────────────────────────────────┘
-📌 EXTRAIR: "PRODUTO EXEMPLO MARCA 500G" → 12.50
+            Considerar que o último valor monetário da linha do item é o total do item.
 
-TIPO 2 - Descrição e valor na mesma linha:
-┌───────────────────────────────────────────────────────────────┐
-│ 002  ARROZ BRANCO 5KG         2 UN x 25,90          51,80     │
-└───────────────────────────────────────────────────────────────┘
-📌 EXTRAIR: "ARROZ BRANCO 5KG" → 51.80
+            Normalizar números pt-BR → ponto (ex.: 12,90 → 12.90; 1.234,56 → 1234.56).
 
-TIPO 3 - Tabela estruturada:
-┌───────────────────────────────────────────────────────────────┐
-│ ITEM  CODIGO  DESCRICAO              QTD  VL.UNIT  VL.TOTAL   │
-│ 001   789123  FEIJAO PRETO 1KG       1    8,99     8,99       │
-│ 002   456789  MACARRAO INTEGRAL 500G 3    4,50     13,50      │
-└───────────────────────────────────────────────────────────────┘
-📌 EXTRAIR:
-  - "FEIJAO PRETO 1KG" → 8.99
-  - "MACARRAO INTEGRAL 500G" → 13.50
+            Não inventar: se faltar algum campo, use null ou omita.
 
-═══════════════════════════════════════════════════════════════════
-⚠️ SEÇÕES QUE NÃO SÃO PRODUTOS (IGNORAR COMPLETAMENTE)
-═══════════════════════════════════════════════════════════════════
+            Validação: some total dos itens e compare com o total do cupom (quando presente). Informe checks.sum_items, checks.declared_total, checks.delta. Aceite |delta| ≤ 0.05.
 
-❌ Seção de Pagamento:
-   FORMA DE PAGAMENTO       VALOR PAGO
-   PIX                      150,00
-   CARTEIRA DIGITAL         150,00
-   DEBITO MASTERCARD        150,00
-
-❌ Seção de Totais:
-   SUBTOTAL              R$ 145,50
-   DESCONTO              R$   5,00
-   TOTAL A PAGAR         R$ 140,50
-   Qtd. Total de Itens        15
-
-❌ Informações Fiscais:
-   NFC-e: 000012345 Serie 1
-   Protocolo de Autorização: XYZ123
-   Consulte pela Chave de Acesso em...
-
-═══════════════════════════════════════════════════════════════════
-✅ EXEMPLO COMPLETO - EXTRAÇÃO CORRETA
-═══════════════════════════════════════════════════════════════════
-
-CUPOM FISCAL EXEMPLO:
-
-SUPERMERCADO BOM PREÇO LTDA
-CNPJ: 12.345.678/0001-99
-Data: 17/10/2025  Hora: 15:30
-
-──────────────────────────────────────────────────────────────────
-ITEM  CODIGO       DESCRICAO                 QTD  VL.UN   VL.TOTAL
-──────────────────────────────────────────────────────────────────
-001   7891000100103
-      LEITE INTEGRAL 1L MARCA A              2    5,99    11,98
-
-002   7891000100207
-      CAFE TORRADO 500G MARCA B              1    18,90   18,90
-
-003   PÃOZINHO FRANCES                       10   0,60    6,00
-──────────────────────────────────────────────────────────────────
-Qtd. Total de Itens: 3
-SUBTOTAL                                             R$ 36,88
-──────────────────────────────────────────────────────────────────
-FORMA DE PAGAMENTO                           VALOR PAGO
-CARTAO DEBITO                                       36,88
-──────────────────────────────────────────────────────────────────
-
-JSON CORRETO A SER RETORNADO:
-
-{
-  "items": [
-    {
-      "description": "LEITE INTEGRAL 1L MARCA A",
-      "amount": 11.98,
-      "quantity": 2
-    },
-    {
-      "description": "CAFE TORRADO 500G MARCA B",
-      "amount": 18.90,
-      "quantity": 1
-    },
-    {
-      "description": "PÃOZINHO FRANCES",
-      "amount": 6.00,
-      "quantity": 10
-    }
-  ],
-  "metadata": {
-    "establishment": "SUPERMERCADO BOM PREÇO LTDA",
-    "cnpj": "12.345.678/0001-99",
-    "date": "17/10/2025",
-    "time": "15:30",
-    "total": 36.88,
-    "paymentMethod": {
-      "type": "debit",
-      "details": "CARTAO DEBITO"
-    }
-  },
-  "confidence": "high",
-  "notes": "3 items extracted. Sum validation: 11.98 + 18.90 + 6.00 = 36.88 ✓"
-}
-
-═══════════════════════════════════════════════════════════════════
-🔍 PROCESSO DE EXTRAÇÃO - PASSO A PASSO
-═══════════════════════════════════════════════════════════════════
-
-PASSO 1: Localize a seção de produtos
-  → Procure por cabeçalhos: "ITEM", "CODIGO", "DESCRICAO", "PRODUTO"
-  → Produtos geralmente vêm ANTES de "TOTAL", "FORMA DE PAGAMENTO"
-
-PASSO 2: Identifique cada produto
-  → Produtos têm descrições em MAIÚSCULAS (geralmente)
-  → Produtos têm códigos de barras (13 dígitos) OU números de item (001, 002)
-  → Produtos têm quantidade (UN, PC, KG) e valores monetários
-
-PASSO 3: Para cada produto encontrado:
-  a) Extraia a DESCRIÇÃO (sem código de barras, sem número do item)
-  b) Extraia o VALOR TOTAL do item (última coluna numérica)
-  c) Extraia a QUANTIDADE (se disponível)
-
-PASSO 4: Validação final
-  → Some todos os valores extraídos
-  → Compare com o "TOTAL" ou "VALOR A PAGAR" do cupom
-  → Se diferença > 10%: REVISE a extração
-
-PASSO 5: Ignore completamente
-  → Linhas após "FORMA DE PAGAMENTO", "TOTAL", "TRIBUTOS"
-  → Informações de CNPJ, endereço, telefone
-  → Códigos NFC-e, protocolos, chaves de acesso
-
-═══════════════════════════════════════════════════════════════════
-📤 FORMATO DA RESPOSTA
-═══════════════════════════════════════════════════════════════════
-
-Retorne APENAS um JSON válido com esta estrutura:
-
-{
-  "items": [
-    {
-      "description": "NOME DO PRODUTO (string limpa, sem código)",
-      "amount": 0.00,  // número com ponto decimal
-      "quantity": 1    // número inteiro
-    }
-  ],
-  "metadata": {
-    "establishment": "Nome do estabelecimento ou null",
-    "cnpj": "XX.XXX.XXX/XXXX-XX ou null",
-    "date": "DD/MM/YYYY ou null",
-    "time": "HH:MM:SS ou null",
-    "total": 0.00,  // total do cupom
-    "paymentMethod": {
-      "type": "debit|credit|pix|cash|other",
-      "details": "texto original da forma de pagamento"
-    }
-  },
-  "confidence": "high|medium|low",
-  "notes": "X items extracted. Sum: A + B + C = Total ✓/✗"
-}
-
-═══════════════════════════════════════════════════════════════════
-
-Agora analise a imagem fornecida e retorne o JSON com TODOS os produtos.`
+            Saída exclusivamente o JSON final, sem explicações.`
             },
             {
               type: 'image_url',
