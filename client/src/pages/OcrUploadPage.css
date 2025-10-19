@@ -528,6 +528,8 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  position: relative;
+  z-index: 10;
 }
 
 .item-checkbox {
@@ -538,6 +540,8 @@
   border: 2px solid var(--border-color);
   border-radius: var(--radius-sm);
   transition: all var(--transition-base);
+  position: relative;
+  z-index: 10;
 }
 
 .item-checkbox:checked {
@@ -848,6 +852,8 @@ body.dark .item-row {
   align-items: center;
   min-width: 0;
   flex-wrap: nowrap;
+  position: relative;
+  z-index: 10;
 }
 
 .item-edit-input {
@@ -882,6 +888,8 @@ body.dark .item-row {
   display: flex;
   gap: var(--space-sm);
   align-items: center;
+  position: relative;
+  z-index: 10;
 }
 
 .item-action-btn {
@@ -898,6 +906,8 @@ body.dark .item-row {
   justify-content: center;
   background: var(--bg-secondary);
   border: 2px solid var(--border-color);
+  position: relative;
+  z-index: 10;
 }
 
 .item-action-btn:hover {
