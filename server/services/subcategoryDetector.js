@@ -151,16 +151,10 @@ const subcategoryMappings = {
         'fralda', 'pampers', 'huggies', 'lenco', 'toalha',
         'detergente', 'ype', 'limpol', 'clear', 'omo', 'ariel', 'ace', 'comfort',
         'sabao', 'agua sanitaria', 'desinfetante', 'limpa', 'ajax', 'veja',
-        'esponja', 'pano', 'vassoura', 'rodo', 'balde', 'saco lixo', 'fralda', 'pampers', 
+        'esponja', 'pano', 'vassoura', 'rodo', 'balde', 'saco lixo', 'fralda', 'pampers',
         'huggies', 'lenco', 'toalha', 'bebe'
       ]
-    // },
-    // fraldas: {
-    //   id: 'fraldas',
-    //   name: 'Fraldas e Higiene',
-    //   emoji: '🍼',
-    //   keywords: ['fralda', 'pampers', 'huggies', 'lenco', 'toalha', 'bebe']
-    // },
+    },
     pet: {
       id: 'pet',
       name: 'Pet',
