@@ -1,6 +1,7 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import { uploadReceipt, saveOcrTransactions } from '../services/api';
+import axios from 'axios';
 import './OcrUploadPage.css';
 
 const OcrUploadPage = () => {
@@ -10,14 +11,61 @@ const OcrUploadPage = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [extractedTransactions, setExtractedTransactions] = useState([]);
-  const [selectedItems, setSelectedItems] = useState([]); // NEW: Track selected items
+  const [selectedItems, setSelectedItems] = useState([]); // Track selected items
   const [extractedMetadata, setExtractedMetadata] = useState(null);
   const [isSaved, setIsSaved] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [facingMode, setFacingMode] = useState('environment');
+  const [categories, setCategories] = useState([]); // All available categories
+  const [selectedCategory, setSelectedCategory] = useState(null); // Selected category for all items
+  const [editingItem, setEditingItem] = useState(null); // Index of item being edited
 
   const webcamRef = useRef(null);
   const fileInputRef = useRef(null);
+
+  // Load categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get('/api/transactions/categories', {
+          headers: { 'x-auth-token': token }
+        });
+        setCategories(response.data);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  // Update item in the list
+  const updateItem = (index, field, value) => {
+    setExtractedTransactions(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  // Remove item from list
+  const removeItem = (index) => {
+    setExtractedTransactions(prev => prev.filter((_, i) => i !== index));
+    setSelectedItems(prev => prev.filter(i => i !== index).map(i => i > index ? i - 1 : i));
+  };
+
+  // Apply category to all items
+  const applyCategoryToAll = (categoryId) => {
+    const category = categories.find(c => c.id === categoryId);
+    if (category) {
+      setExtractedTransactions(prev => prev.map(item => ({
+        ...item,
+        category: category.name,
+        categoryId: category.id
+      })));
+      setSelectedCategory(category);
+    }
+  };
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -164,6 +212,11 @@ const OcrUploadPage = () => {
       setSelectedItems(items.map((_, index) => index));
       setExtractedMetadata(metadata);
       setIsSaved(false);
+
+      // Set auto-detected category
+      if (metadata && metadata.autoCategory) {
+        setSelectedCategory(metadata.autoCategory);
+      }
 
       let successMsg = `✅ ${items.length} item(ns) extraído(s) com sucesso! Revise e selecione os itens que deseja salvar.`;
       if (metadata) {
@@ -370,6 +423,43 @@ const OcrUploadPage = () => {
             </div>
           )}
 
+          {/* Category Selector */}
+          {selectedCategory && categories.length > 0 && (
+            <div className="category-card">
+              <h4 className="category-header">📂 Categoria da Despesa</h4>
+              <div className="category-selector-wrapper">
+                <div className="auto-category-badge">
+                  <span className="auto-category-label">Auto-detectado:</span>
+                  <span className="auto-category-value">
+                    {selectedCategory.emoji} {selectedCategory.name}
+                  </span>
+                  {extractedMetadata?.establishmentName && (
+                    <span className="establishment-name">
+                      ({extractedMetadata.establishmentName})
+                    </span>
+                  )}
+                </div>
+                <div className="category-selector">
+                  <label htmlFor="category-dropdown" className="category-label">
+                    Alterar categoria:
+                  </label>
+                  <select
+                    id="category-dropdown"
+                    value={selectedCategory?.id || ''}
+                    onChange={(e) => applyCategoryToAll(e.target.value)}
+                    className="category-dropdown"
+                  >
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.emoji} {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Items */}
           <div className="items-card">
             <div className="items-card-header">
@@ -386,15 +476,14 @@ const OcrUploadPage = () => {
             </div>
 
             <p className="items-info">
-              ℹ️ Selecione os itens que deseja salvar no banco de dados ({selectedItems.length} selecionado{selectedItems.length !== 1 ? 's' : ''})
+              ℹ️ Selecione os itens que deseja salvar. Clique em ✏️ para editar ou 🗑️ para remover ({selectedItems.length} selecionado{selectedItems.length !== 1 ? 's' : ''})
             </p>
 
             <ul className="items-list">
               {extractedTransactions.map((t, index) => (
                 <li
                   key={index}
-                  className={`item-row ${selectedItems.includes(index) ? 'item-row-selected' : ''}`}
-                  onClick={() => toggleItemSelection(index)}
+                  className={`item-row ${selectedItems.includes(index) ? 'item-row-selected' : ''} ${editingItem === index ? 'item-row-editing' : ''}`}
                 >
                   <div className="item-checkbox-wrapper">
                     <input
@@ -402,10 +491,72 @@ const OcrUploadPage = () => {
                       checked={selectedItems.includes(index)}
                       onChange={() => toggleItemSelection(index)}
                       className="item-checkbox"
+                      onClick={(e) => e.stopPropagation()}
                     />
-                    <span className="item-description">{t.description}</span>
                   </div>
-                  <span className="item-amount">R$ {t.amount.toFixed(2)}</span>
+
+                  {editingItem === index ? (
+                    // Edit mode
+                    <div className="item-edit-mode">
+                      <input
+                        type="text"
+                        value={t.description}
+                        onChange={(e) => updateItem(index, 'description', e.target.value)}
+                        className="item-edit-input item-edit-description"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={t.amount}
+                        onChange={(e) => updateItem(index, 'amount', parseFloat(e.target.value) || 0)}
+                        className="item-edit-input item-edit-amount"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingItem(null);
+                        }}
+                        className="item-action-btn item-save-btn"
+                        title="Salvar alterações"
+                      >
+                        ✅
+                      </button>
+                    </div>
+                  ) : (
+                    // View mode
+                    <>
+                      <div className="item-content" onClick={() => toggleItemSelection(index)}>
+                        <span className="item-description">{t.description}</span>
+                        <span className="item-amount">R$ {t.amount.toFixed(2)}</span>
+                      </div>
+                      <div className="item-actions">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingItem(index);
+                          }}
+                          className="item-action-btn item-edit-btn"
+                          title="Editar item"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm('Tem certeza que deseja remover este item?')) {
+                              removeItem(index);
+                            }
+                          }}
+                          className="item-action-btn item-delete-btn"
+                          title="Remover item"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
