@@ -61,7 +61,7 @@ const OcrUploadPage = () => {
   };
 
   // Apply category to all items
-  const applyCategoryToAll = (categoryId) => {
+  const applyCategoryToAll = async (categoryId) => {
     const category = categories.find(c => c.id === categoryId);
     if (category) {
       setExtractedTransactions(prev => prev.map(item => ({
@@ -70,7 +70,61 @@ const OcrUploadPage = () => {
         categoryId: category.id
       })));
       setSelectedCategory(category);
+
+      // Load subcategories for this category
+      await loadSubcategories(categoryId);
     }
+  };
+
+  // Load subcategories for a category
+  const loadSubcategories = async (categoryId) => {
+    try {
+      console.log(`🔍 Loading subcategories for: ${categoryId}`);
+      const response = await api.get(`/transactions/subcategories/${categoryId}`);
+      console.log('✅ Subcategories loaded:', response.data);
+      setSubcategories(response.data);
+    } catch (error) {
+      console.error('❌ Error loading subcategories:', error);
+      setSubcategories([{ id: 'outros', name: 'Outros', emoji: '💡' }]);
+    }
+  };
+
+  // Update subcategory for a specific item
+  const updateSubcategory = (index, subcategoryId) => {
+    const subcategory = subcategories.find(s => s.id === subcategoryId);
+    if (subcategory) {
+      setExtractedTransactions(prev => {
+        const updated = [...prev];
+        updated[index] = {
+          ...updated[index],
+          subcategory: subcategory.name,
+          subcategoryId: subcategory.id,
+          subcategoryEmoji: subcategory.emoji,
+          subcategoryAutoDetected: false // Manual selection
+        };
+        return updated;
+      });
+    }
+  };
+
+  // Add new item manually
+  const addManualItem = () => {
+    const newItem = {
+      description: '',
+      amount: 0,
+      category: selectedCategory?.name || 'Outras eventuais',
+      categoryId: selectedCategory?.id || 'outras',
+      subcategory: 'Outros',
+      subcategoryId: 'outros',
+      subcategoryEmoji: '💡',
+      subcategoryAutoDetected: false,
+      type: 'expense',
+      isManual: true // Flag to identify manual items
+    };
+
+    setExtractedTransactions(prev => [...prev, newItem]);
+    setEditingItem(extractedTransactions.length); // Start editing the new item
+    setSelectedItems(prev => [...prev, extractedTransactions.length]); // Auto-select new item
   };
 
   const handleFileChange = (e) => {
@@ -225,11 +279,18 @@ const OcrUploadPage = () => {
       if (metadata && metadata.autoCategory) {
         console.log('Auto-detected category:', metadata.autoCategory);
         setSelectedCategory(metadata.autoCategory);
+        // Load subcategories for auto-detected category
+        if (metadata.autoCategory.id) {
+          loadSubcategories(metadata.autoCategory.id);
+        }
       } else if (categories.length > 0) {
         // Default to "Outras eventuais" if no category detected
         console.log('Using default category');
         const defaultCategory = categories.find(c => c.id === 'outras') || categories[categories.length - 1];
         setSelectedCategory(defaultCategory);
+        if (defaultCategory.id) {
+          loadSubcategories(defaultCategory.id);
+        }
       } else {
         console.warn('No categories loaded yet');
       }
@@ -539,9 +600,30 @@ const OcrUploadPage = () => {
                   ) : (
                     // View mode
                     <>
-                      <div className="item-content" onClick={() => toggleItemSelection(index)}>
-                        <span className="item-description">{t.description}</span>
-                        <span className="item-amount">R$ {t.amount.toFixed(2)}</span>
+                      <div className="item-content-wrapper">
+                        <div className="item-content" onClick={() => toggleItemSelection(index)}>
+                          <span className="item-description">{t.description}</span>
+                          <span className="item-amount">R$ {t.amount.toFixed(2)}</span>
+                        </div>
+                        {subcategories.length > 0 && (
+                          <div className="item-subcategory-row">
+                            {t.subcategoryAutoDetected && (
+                              <span className="subcategory-auto-badge">Auto:</span>
+                            )}
+                            <select
+                              value={t.subcategoryId || 'outros'}
+                              onChange={(e) => updateSubcategory(index, e.target.value)}
+                              className="item-subcategory-dropdown"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {subcategories.map(subcat => (
+                                <option key={subcat.id} value={subcat.id}>
+                                  {subcat.emoji} {subcat.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
                       <div className="item-actions">
                         <button
@@ -572,6 +654,15 @@ const OcrUploadPage = () => {
                 </li>
               ))}
             </ul>
+
+            {/* Add Missing Item Button */}
+            <button
+              onClick={addManualItem}
+              type="button"
+              className="add-item-btn"
+            >
+              ➕ Adicionar Item Faltante
+            </button>
 
             <div className="total-summary">
               <div>

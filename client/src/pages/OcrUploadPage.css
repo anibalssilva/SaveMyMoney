@@ -981,6 +981,75 @@ body.dark .item-row {
   }
 }
 
+/* ===== SUB CATEGORIES ===== */
+.item-content-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.item-subcategory-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding-left: var(--space-md);
+}
+
+.subcategory-auto-badge {
+  font-size: 0.75rem;
+  color: var(--cyber-primary);
+  font-weight: 600;
+  background: rgba(0, 240, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.item-subcategory-dropdown {
+  flex: 1;
+  padding: 4px 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.item-subcategory-dropdown:hover {
+  border-color: var(--cyber-primary);
+}
+
+.item-subcategory-dropdown:focus {
+  outline: none;
+  border-color: var(--cyber-primary);
+  box-shadow: 0 0 0 2px rgba(0, 240, 255, 0.1);
+}
+
+/* ===== ADD ITEM BUTTON ===== */
+.add-item-btn {
+  width: 100%;
+  padding: var(--space-md);
+  background: rgba(0, 240, 255, 0.1);
+  border: 2px dashed var(--cyber-primary);
+  border-radius: var(--radius-lg);
+  color: var(--cyber-primary);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  margin-bottom: var(--space-lg);
+}
+
+.add-item-btn:hover {
+  background: rgba(0, 240, 255, 0.2);
+  border-style: solid;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 240, 255, 0.3);
+}
+
 /* ===== ACCESSIBILITY ===== */
 @media (prefers-reduced-motion: reduce) {
   * {
