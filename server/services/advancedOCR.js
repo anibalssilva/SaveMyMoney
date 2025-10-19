@@ -748,7 +748,25 @@ async function extractReceiptData(imageBuffer) {
     if (openaiCount >= parserCount) {
       console.log(`\n[Hybrid] ✅ DECISION: Using GPT-4o Vision (${openaiCount} items)`);
       console.log(`[Hybrid] Reason: More items than parser (${openaiCount} vs ${parserCount})`);
-      finalResult = { ...openaiResult, method: 'hybrid-openai' };
+
+      // Calculate confidence based on total amount match
+      let confidence = 'medium';
+      if (openaiResult.metadata?.total && parserResult.metadata?.total) {
+        const openaiTotal = openaiResult.metadata.total;
+        const parserTotal = parserResult.metadata.total;
+        const diff = Math.abs(openaiTotal - parserTotal);
+        const percentDiff = (diff / parserTotal) * 100;
+
+        if (percentDiff < 1) {
+          confidence = 'high';
+          console.log(`[Hybrid] ✅ Confidence upgraded to HIGH - total matches (diff: ${percentDiff.toFixed(2)}%)`);
+        } else if (percentDiff < 5) {
+          confidence = 'medium';
+          console.log(`[Hybrid] ⚠️  Confidence: MEDIUM - total close match (diff: ${percentDiff.toFixed(2)}%)`);
+        }
+      }
+
+      finalResult = { ...openaiResult, method: 'hybrid-openai', confidence };
     } else {
       console.log(`\n[Hybrid] ✅ DECISION: Using Tesseract+Parser (${parserCount} items)`);
       console.log(`[Hybrid] Reason: More items than GPT-4o (${parserCount} vs ${openaiCount})`);
@@ -967,53 +985,66 @@ function detectExpenseCategory(establishmentName) {
  * Helper function to extract expected item count from receipt text
  */
 function extractExpectedItemCount(text) {
-  // More flexible patterns to catch various formats
-  const itemCountPatterns = [
-    /QTD\.?\s*TOTAL\s*DE\s*ITENS\s+0*(\d{1,3})/i,  // "QTD. TOTAL DE ITENS    034"
-    /(?:QTD|QTDE|QUANTIDADE)\.?\s*TOTAL\s*(?:DE\s*)?(?:ITENS)?\s+0*(\d{1,3})/i,
-    /TOTAL\s*(?:DE\s*)?ITENS\s+0*(\d{1,3})/i,
-    /(\d{1,3})\s+(?:ITENS|PRODUTOS)\s*$/i,
-    /(?:ITENS|PRODUTOS)\s+0*(\d{1,3})/i,
-    /QTD\.?\s+TOTAL\s+DE\s+ITENS[:\s]*0*(\d{1,3})/i  // Extra flexible
-  ];
-
   const lines = text.split('\n');
 
-  // First pass: look for explicit item count lines
+  // First pass: Search full text for item count pattern (case-insensitive)
+  const fullTextPattern = /(?:QTD\.?|QTDE\.?|QUANTIDADE)\s*TOTAL\s*(?:DE\s*)?(?:ITEN[S]?|PRODUTOS)[:\s]*0*(\d{1,3})/i;
+  const fullMatch = text.match(fullTextPattern);
+  if (fullMatch) {
+    const count = parseInt(fullMatch[1], 10);
+    console.log(`[ExpectedCount] ✓ Found in full text: ${count} (raw: "${fullMatch[1]}")`);
+    return count;
+  }
+
+  // Second pass: Line-by-line with very flexible patterns
   for (const line of lines) {
-    // Look specifically for lines with item count info
-    if (line.match(/QTD|QTDE|TOTAL.*ITEN|ITEN.*TOTAL/i)) {
+    // Log any line that mentions QTD or ITEN
+    if (line.match(/QTD|QTDE|ITEN/i)) {
       console.log(`[ExpectedCount] Checking line: "${line}"`);
-      for (const pattern of itemCountPatterns) {
+
+      // Pattern variations
+      const patterns = [
+        /QTD\.?\s*TOTAL\s*DE\s*ITEN[S]?\s+0*(\d{2,3})/i,
+        /QTDE?\.?\s+TOTAL\s+(?:DE\s+)?ITEN[S]?\s+0*(\d{2,3})/i,
+        /TOTAL\s+(?:DE\s+)?ITEN[S]?\s+0*(\d{2,3})/i,
+        /ITEN[S]?\s+0*(\d{2,3})\s*$/i,
+        /(\d{2,3})\s+ITEN[S]?/i
+      ];
+
+      for (const pattern of patterns) {
         const match = line.match(pattern);
         if (match) {
-          const count = parseInt(match[1], 10); // Parse with base 10, removes leading zeros
-          console.log(`[ExpectedCount] ✓ Found expected count: ${count} (raw: "${match[1]}")`);
-          return count;
+          const count = parseInt(match[1], 10);
+          if (count >= 1 && count <= 999) {
+            console.log(`[ExpectedCount] ✓ Found expected count: ${count} (pattern matched)`);
+            return count;
+          }
         }
       }
     }
   }
 
-  // Second pass: look for standalone number patterns after "TOTAL" or "QTD"
+  // Third pass: Look for "TOTAL" followed by a 2-3 digit number
   for (const line of lines) {
-    if (line.match(/TOTAL/i) || line.match(/QTD/i)) {
-      // Look for 2-3 digit numbers that could be item counts
-      const numbers = line.match(/\b0*(\d{2,3})\b/g);
-      if (numbers) {
-        console.log(`[ExpectedCount] Found potential counts in line "${line}": ${numbers.join(', ')}`);
-        // Take the last number found (usually the item count is at the end)
-        const lastNum = numbers[numbers.length - 1];
-        const count = parseInt(lastNum, 10);
-        if (count >= 1 && count <= 999) {
-          console.log(`[ExpectedCount] ✓ Using count: ${count}`);
+    if (line.match(/TOTAL/i)) {
+      const numbers = line.match(/\b(\d{2,3})\b/g);
+      if (numbers && numbers.length > 0) {
+        // Filter out numbers that are obviously not item counts (like years, addresses)
+        const filtered = numbers.filter(n => {
+          const num = parseInt(n, 10);
+          return num >= 5 && num <= 200; // Reasonable item count range
+        });
+
+        if (filtered.length > 0) {
+          const count = parseInt(filtered[filtered.length - 1], 10);
+          console.log(`[ExpectedCount] ⚠️  Inferred count from TOTAL line: ${count}`);
           return count;
         }
       }
     }
   }
 
-  console.log(`[ExpectedCount] No expected count found in receipt`);
+  console.log(`[ExpectedCount] ❌ No expected count found in receipt`);
   return null;
 }
 
