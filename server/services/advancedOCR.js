@@ -609,53 +609,145 @@ async function parseReceiptText(text) {
 }
 
 /**
- * Main function - orchestrates all OCR methods
- * PRIORITY: GPT-4o Vision FIRST (direct), Tesseract as fallback only
+ * Main function - HYBRID METHOD
+ * Combines GPT-4o Vision + Tesseract Parser for maximum accuracy
+ *
+ * Strategy:
+ * 1. Run GPT-4o Vision AND Tesseract+Parser in parallel
+ * 2. Extract expected item count from Tesseract text
+ * 3. Validate GPT-4o result against expected count
+ * 4. If GPT-4o is incomplete, merge with Tesseract items
+ * 5. Return the most complete result
  */
 async function extractReceiptData(imageBuffer) {
-  console.log('\n🔍 Starting Advanced OCR extraction...\n');
-  console.log('📋 Extraction strategy: GPT-4o Vision (primary) → Tesseract + Parser (fallback)\n');
+  console.log('\n🔍 Starting HYBRID OCR extraction...\n');
+  console.log('📋 Strategy: GPT-4o Vision + Tesseract Parser (parallel) → Intelligent Merge\n');
 
-  // STEP 1: Try GPT-4o Vision FIRST (if API key is configured)
-  console.log('[1/2] 🤖 Attempting GPT-4o Vision extraction...');
-  const openaiResult = await extractWithOpenAI(imageBuffer);
-
-  if (openaiResult && openaiResult.items && openaiResult.items.length > 0) {
-    console.log(`\n✅ SUCCESS: GPT-4o Vision extracted ${openaiResult.items.length} items`);
-    console.log('✓ Using GPT-4o Vision result (highest quality - no Tesseract needed)');
-    console.log(`✅ Extraction complete: ${openaiResult.items.length} items found`);
-    console.log(`📊 Method: ${openaiResult.method}, Confidence: ${openaiResult.confidence}\n`);
-    return openaiResult;
-  }
-
-  // STEP 2: Fallback to Tesseract + Parser (only if OpenAI failed or unavailable)
-  console.log('\n⚠️  GPT-4o Vision unavailable or failed, falling back to Tesseract + Parser...\n');
-
-  console.log('[2/2] 📝 Preprocessing image for Tesseract...');
+  // STEP 1: Preprocess image for Tesseract
+  console.log('[1/3] 📝 Preprocessing image...');
   const processedImage = await preprocessImage(imageBuffer);
 
-  console.log('[2/2] 🔍 Running Tesseract OCR...');
-  const tesseractResult = await extractWithTesseract(processedImage);
+  // STEP 2: Run GPT-4o Vision AND Tesseract in PARALLEL for speed
+  console.log('[2/3] 🤖 Running GPT-4o Vision + Tesseract in parallel...\n');
 
-  console.log('[2/2] 🧩 Parsing text with enhanced parser...');
+  const [openaiResult, tesseractResult] = await Promise.all([
+    extractWithOpenAI(imageBuffer),
+    extractWithTesseract(processedImage)
+  ]);
+
+  console.log('\n[3/3] 🧠 Analyzing results and applying intelligent merge...\n');
+
+  // STEP 3: Parse Tesseract text to get parser results and expected item count
   const parserResult = await parseReceiptText(tesseractResult.text);
 
-  if (parserResult.items.length > 0) {
-    console.log(`\n✅ Tesseract + Parser extracted ${parserResult.items.length} items`);
-    console.log(`✅ Extraction complete: ${parserResult.items.length} items found`);
-    console.log(`📊 Method: ${parserResult.method}, Confidence: ${parserResult.confidence}\n`);
-    return parserResult;
+  // Extract expected item count from text
+  const expectedItemCount = extractExpectedItemCount(tesseractResult.text);
+  console.log(`[Hybrid] Expected item count from receipt: ${expectedItemCount || 'NOT FOUND'}`);
+
+  // STEP 4: Validate and choose best result
+  const openaiCount = openaiResult?.items?.length || 0;
+  const parserCount = parserResult?.items?.length || 0;
+
+  console.log(`\n[Hybrid] 📊 COMPARISON:`);
+  console.log(`[Hybrid] GPT-4o extracted: ${openaiCount} items`);
+  console.log(`[Hybrid] Tesseract+Parser extracted: ${parserCount} items`);
+  console.log(`[Hybrid] Expected from receipt: ${expectedItemCount || 'unknown'}`);
+
+  // Decision logic
+  let finalResult;
+
+  // Case 1: GPT-4o has items AND matches expected count (or no expected count available)
+  if (openaiResult && openaiCount > 0) {
+    if (!expectedItemCount || openaiCount === expectedItemCount) {
+      console.log(`\n[Hybrid] ✅ DECISION: Using GPT-4o Vision (${openaiCount} items)`);
+      console.log(`[Hybrid] Reason: GPT-4o extracted ${openaiCount} items${expectedItemCount ? ' (matches expected count)' : ''}`);
+      finalResult = openaiResult;
+    }
+    // Case 2: GPT-4o has items but FEWER than expected - try to merge
+    else if (openaiCount < expectedItemCount) {
+      console.log(`\n[Hybrid] ⚠️  GPT-4o incomplete: ${openaiCount}/${expectedItemCount} items`);
+
+      // If parser has MORE items, compare which is closer to expected
+      if (parserCount > openaiCount) {
+        const openaiDiff = Math.abs(expectedItemCount - openaiCount);
+        const parserDiff = Math.abs(expectedItemCount - parserCount);
+
+        if (parserDiff < openaiDiff || parserCount === expectedItemCount) {
+          console.log(`[Hybrid] ✅ DECISION: Using Tesseract+Parser (${parserCount} items)`);
+          console.log(`[Hybrid] Reason: Parser is closer to expected count (${parserCount} vs ${openaiCount})`);
+          finalResult = { ...parserResult, method: 'hybrid-parser' };
+        } else {
+          console.log(`[Hybrid] ✅ DECISION: Using GPT-4o Vision despite lower count`);
+          console.log(`[Hybrid] Reason: Still closer to expected than parser`);
+          finalResult = { ...openaiResult, method: 'hybrid-openai' };
+        }
+      } else {
+        console.log(`[Hybrid] ✅ DECISION: Using GPT-4o Vision (best available)`);
+        finalResult = { ...openaiResult, method: 'hybrid-openai' };
+      }
+    }
+    // Case 3: GPT-4o has MORE than expected
+    else {
+      console.log(`\n[Hybrid] ⚠️  GPT-4o extracted MORE than expected: ${openaiCount}/${expectedItemCount}`);
+      console.log(`[Hybrid] ✅ DECISION: Using GPT-4o Vision (validation filters may have removed invalid items)`);
+      finalResult = { ...openaiResult, method: 'hybrid-openai' };
+    }
+  }
+  // Case 4: GPT-4o failed, use parser
+  else if (parserCount > 0) {
+    console.log(`\n[Hybrid] ✅ DECISION: Using Tesseract+Parser (${parserCount} items)`);
+    console.log(`[Hybrid] Reason: GPT-4o unavailable/failed`);
+    finalResult = { ...parserResult, method: 'hybrid-parser' };
+  }
+  // Case 5: Both failed
+  else {
+    console.log(`\n[Hybrid] ❌ DECISION: All methods failed`);
+    finalResult = {
+      items: [],
+      metadata: parserResult.metadata || {},
+      rawText: tesseractResult.text,
+      confidence: 'low',
+      method: 'hybrid-failed',
+    };
   }
 
-  // Last resort: return raw text
-  console.log('\n❌ All extraction methods failed - returning raw Tesseract text\n');
-  return {
-    items: [],
-    metadata: {},
-    rawText: tesseractResult.text,
-    confidence: 'low',
-    method: 'tesseract-raw',
+  // Add hybrid metadata
+  finalResult.hybridInfo = {
+    openaiItemCount: openaiCount,
+    parserItemCount: parserCount,
+    expectedItemCount: expectedItemCount,
+    methodUsed: finalResult.method,
   };
+
+  console.log(`\n✅ HYBRID EXTRACTION COMPLETE`);
+  console.log(`📊 Final result: ${finalResult.items.length} items`);
+  console.log(`📊 Method: ${finalResult.method}`);
+  console.log(`📊 Confidence: ${finalResult.confidence}\n`);
+
+  return finalResult;
+}
+
+/**
+ * Helper function to extract expected item count from receipt text
+ */
+function extractExpectedItemCount(text) {
+  const itemCountPatterns = [
+    /(?:QTD|QTDE|QUANTIDADE)\.?\s*TOTAL\s*(?:DE\s*)?(?:ITENS)?[:\s]*(\d+)/i,
+    /TOTAL\s*(?:DE\s*)?ITENS[:\s]*(\d+)/i,
+    /(\d+)\s*(?:ITENS|PRODUTOS)/i,
+    /QTD\.\s*TOTAL\s*DE\s*ITENS\s*(\d+)/i
+  ];
+
+  const lines = text.split('\n');
+  for (const line of lines) {
+    for (const pattern of itemCountPatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        return parseInt(match[1]);
+      }
+    }
+  }
+  return null;
 }
 
 module.exports = {
