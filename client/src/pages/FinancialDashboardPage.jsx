@@ -497,8 +497,10 @@ const FinancialDashboardPage = () => {
         display: true,
         position: 'top',
         labels: {
-          // Match the same font color pattern used across the app
-          color: 'rgba(255, 255, 255, 0.9)',
+          // Legenda com pointStyle e texto branco
+          color: '#ffffff',
+          usePointStyle: true,
+          pointStyle: 'circle',
           font: { size: 12, weight: 600 },
           padding: 15,
           // Generate legend per bar instead of per dataset
@@ -512,6 +514,7 @@ const FinancialDashboardPage = () => {
               fillStyle: Array.isArray(bg) ? bg[i] : bg,
               strokeStyle: Array.isArray(bd) ? bd[i] : bd,
               lineWidth: 1,
+              pointStyle: 'circle',
               // index is required but we disable click behavior below
               datasetIndex: 0,
             }));
@@ -565,7 +568,9 @@ const FinancialDashboardPage = () => {
         display: true,
         position: 'top',
         labels: {
-          color: 'rgba(255, 255, 255, 0.9)',
+          color: '#ffffff',
+          usePointStyle: true,
+          pointStyle: 'circle',
           font: { size: 12, weight: 600 },
           padding: 15,
         }
@@ -615,7 +620,9 @@ const FinancialDashboardPage = () => {
         display: true,
         position: 'right',
         labels: {
-          color: 'rgba(255, 255, 255, 0.9)',
+          color: '#ffffff',
+          usePointStyle: true,
+          pointStyle: 'circle',
           font: { size: 12, weight: 600 },
           padding: 12,
           boxWidth: 15,
