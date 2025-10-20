@@ -201,21 +201,7 @@ const DashboardPage = () => {
           <h3>🔍 Filtros</h3>
         </div>
 
-        <div className="filters-grid-horizontal">
-          {/* Type Filter */}
-          <div className="filter-group">
-            <label className="filter-label">TIPO</label>
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">Todos</option>
-              <option value="expense">Despesas</option>
-              <option value="income">Receitas</option>
-            </select>
-          </div>
-
+        <div className="filters-grid-horizontal-2cols">
           {/* Month Filter */}
           <div className="filter-group">
             <label className="filter-label">MÊS</label>

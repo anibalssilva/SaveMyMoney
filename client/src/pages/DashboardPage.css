@@ -706,6 +706,12 @@
   gap: var(--space-lg);
 }
 
+.filters-grid-horizontal-2cols {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-lg);
+}
+
 /* Charts Section */
 .charts-section {
   display: grid;
@@ -805,7 +811,8 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .filters-grid-horizontal {
+  .filters-grid-horizontal,
+  .filters-grid-horizontal-2cols {
     grid-template-columns: 1fr;
   }
 
