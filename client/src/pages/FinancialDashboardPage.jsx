@@ -130,14 +130,9 @@ const FinancialDashboardPage = () => {
     return typeAndPeriodFilteredTransactions.filter(t => {
       if (selectedCategory !== 'all' && t.category !== selectedCategory) return false;
 
-      if (selectedSubcategory !== 'all') {
-        const subcategoryValue = t.subcategoryId || t.subcategory || DEFAULT_SUBCATEGORY_VALUE;
-        if (subcategoryValue !== selectedSubcategory) return false;
-      }
-
       return true;
     });
-  }, [typeAndPeriodFilteredTransactions, selectedCategory, selectedSubcategory]);
+  }, [typeAndPeriodFilteredTransactions, selectedCategory]);
 
   const stats = useMemo(() => {
     const expenses = filteredTransactions.filter(t => t.type === 'expense');
@@ -156,11 +151,21 @@ const FinancialDashboardPage = () => {
     };
   }, [filteredTransactions]);
 
+  const barChartTransactions = useMemo(() => {
+    if (selectedSubcategory === 'all') {
+      return filteredTransactions;
+    }
+    return filteredTransactions.filter(t => {
+      const subcategoryValue = t.subcategoryId || t.subcategory || DEFAULT_SUBCATEGORY_VALUE;
+      return subcategoryValue === selectedSubcategory;
+    });
+  }, [filteredTransactions, selectedSubcategory]);
+
   // Prepare data for Bar Chart (by category or subcategory)
   const barFocusType = selectedType === 'income' ? 'income' : 'expense';
 
   const barChartData = useMemo(() => {
-    const datasetTransactions = filteredTransactions.filter(t => t.type === barFocusType);
+    const datasetTransactions = barChartTransactions.filter(t => t.type === barFocusType);
 
     if (barFocusType === 'income') {
       const categoryTotals = datasetTransactions.reduce((acc, t) => {
@@ -238,7 +243,7 @@ const FinancialDashboardPage = () => {
         borderRadius: 8,
       }]
     };
-  }, [filteredTransactions, selectedBarCategory, barFocusType]);
+  }, [barChartTransactions, selectedBarCategory, barFocusType]);
 
   // Prepare data for Line Chart (over time)
   const lineChartData = useMemo(() => {
@@ -634,24 +639,9 @@ const FinancialDashboardPage = () => {
               ))}
             </select>
           </div>
-
-          <div className="filter-group">
-            <label className="filter-label">Subcategoria</label>
-            <select
-              className="filter-select"
-              value={selectedSubcategory}
-              onChange={(e) => setSelectedSubcategory(e.target.value)}
-              disabled={selectedCategory === 'all' || availableSubcategories.length === 0}
-            >
-              <option value="all">Todas as Subcategorias</option>
-              {availableSubcategories.map(subcategory => (
-                <option key={subcategory.value} value={subcategory.value}>{subcategory.label}</option>
-              ))}
-            </select>
-          </div>
         </div>
 
-        {(selectedType !== 'expense' || selectedMonth !== 'all' || selectedYear !== 'all' || selectedCategory !== 'all' || selectedSubcategory !== 'all') && (
+        {(selectedType !== 'expense' || selectedMonth !== 'all' || selectedYear !== 'all' || selectedCategory !== 'all') && (
           <button className="clear-filters-btn" onClick={clearFilters}>
             ✖ Limpar Filtros
           </button>
@@ -705,18 +695,34 @@ const FinancialDashboardPage = () => {
             <div className="chart-header">
               <h3>📊 Gráfico de Barras - {barFocusType === 'income' ? 'Receitas' : 'Despesas'}</h3>
               <div className="chart-controls">
-                <label className="chart-control-label">Analisar Categoria:</label>
-                <select
-                  value={selectedBarCategory}
-                  onChange={(e) => setSelectedBarCategory(e.target.value)}
-                  className="filter-select"
-                  disabled={barFocusType === 'income'}
-                >
-                  <option value="all">Todas as Categorias</option>
-                  {expenseCategories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
+                <div className="filter-group">
+                  <label className="chart-control-label">Analisar Categoria:</label>
+                  <select
+                    value={selectedBarCategory}
+                    onChange={(e) => setSelectedBarCategory(e.target.value)}
+                    className="filter-select"
+                    disabled={barFocusType === 'income'}
+                  >
+                    <option value="all">Todas as Categorias</option>
+                    {expenseCategories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="filter-group">
+                  <label className="chart-control-label">Filtrar Subcategoria:</label>
+                  <select
+                    className="filter-select"
+                    value={selectedSubcategory}
+                    onChange={(e) => setSelectedSubcategory(e.target.value)}
+                    disabled={selectedCategory === 'all' || availableSubcategories.length === 0}
+                  >
+                    <option value="all">Todas as Subcategorias</option>
+                    {availableSubcategories.map(subcategory => (
+                      <option key={subcategory.value} value={subcategory.value}>{subcategory.label}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
             <p className="chart-subtitle">
