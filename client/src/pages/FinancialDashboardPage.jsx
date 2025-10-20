@@ -106,6 +106,20 @@ const FinancialDashboardPage = () => {
     []
   );
 
+  // Generate color palette for bar chart items
+  const getPalette = (count) => {
+    const bgColors = [];
+    const borderColors = [];
+    for (let i = 0; i < count; i++) {
+      const hue = Math.round((360 / Math.max(count, 1)) * i);
+      const bg = `hsla(${hue}, 70%, 50%, 0.85)`;
+      const bd = `hsla(${hue}, 70%, 50%, 1)`;
+      bgColors.push(bg);
+      borderColors.push(bd);
+    }
+    return { bgColors, borderColors };
+  };
+
   const typeAndPeriodFilteredTransactions = useMemo(() => {
     return transactions.filter(t => {
       if (selectedType !== 'all' && t.type !== selectedType) return false;
@@ -227,13 +241,16 @@ const FinancialDashboardPage = () => {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10);
 
+      const labels = sorted.map(([name]) => name);
+      const data = sorted.map(([, amount]) => amount);
+      const { bgColors, borderColors } = getPalette(labels.length);
       return {
-        labels: sorted.map(([name]) => name),
+        labels,
         datasets: [{
           label: 'Receitas por Categoria',
-          data: sorted.map(([, amount]) => amount),
-          backgroundColor: 'rgba(16, 185, 129, 0.8)',
-          borderColor: 'rgba(16, 185, 129, 1)',
+          data,
+          backgroundColor: bgColors,
+          borderColor: borderColors,
           borderWidth: 2,
           borderRadius: 8,
         }]
@@ -251,13 +268,16 @@ const FinancialDashboardPage = () => {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10);
 
+      const labels = sorted.map(([name]) => name);
+      const data = sorted.map(([, amount]) => amount);
+      const { bgColors, borderColors } = getPalette(labels.length);
       return {
-        labels: sorted.map(([name]) => name),
+        labels,
         datasets: [{
           label: 'Despesas por Categoria',
-          data: sorted.map(([, amount]) => amount),
-          backgroundColor: 'rgba(239, 68, 68, 0.8)',
-          borderColor: 'rgba(239, 68, 68, 1)',
+          data,
+          backgroundColor: bgColors,
+          borderColor: borderColors,
           borderWidth: 2,
           borderRadius: 8,
         }]
@@ -281,13 +301,16 @@ const FinancialDashboardPage = () => {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10);
 
+    const labels = sorted.map(([value]) => subcategoryLabels.get(value) || value);
+    const data = sorted.map(([, amount]) => amount);
+    const { bgColors, borderColors } = getPalette(labels.length);
     return {
-      labels: sorted.map(([value]) => subcategoryLabels.get(value) || value),
+      labels,
       datasets: [{
         label: `Gastos por Subcategoria - ${selectedBarCategory}`,
-        data: sorted.map(([, amount]) => amount),
-        backgroundColor: 'rgba(239, 68, 68, 0.8)',
-        borderColor: 'rgba(239, 68, 68, 1)',
+        data,
+        backgroundColor: bgColors,
+        borderColor: borderColors,
         borderWidth: 2,
         borderRadius: 8,
       }]
@@ -436,7 +459,24 @@ const FinancialDashboardPage = () => {
           color: 'rgba(255, 255, 255, 0.8)',
           font: { size: 12, weight: 600 },
           padding: 15,
-        }
+          // Generate legend per bar instead of per dataset
+          generateLabels: (chart) => {
+            const labels = chart.data.labels || [];
+            const dataset = chart.data.datasets?.[0] || {};
+            const bg = dataset.backgroundColor;
+            const bd = dataset.borderColor;
+            return labels.map((text, i) => ({
+              text,
+              fillStyle: Array.isArray(bg) ? bg[i] : bg,
+              strokeStyle: Array.isArray(bd) ? bd[i] : bd,
+              lineWidth: 1,
+              // index is required but we disable click behavior below
+              datasetIndex: 0,
+            }));
+          }
+        },
+        // Disable default click (which toggles whole dataset)
+        onClick: () => {}
       },
       tooltip: {
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
