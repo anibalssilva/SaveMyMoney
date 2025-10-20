@@ -56,3 +56,4 @@ export const uploadPdfStatement = (formData) => api.post('/transactions/pdf', fo
 
 export const getBudgets = () => api.get('/budgets');
 export const saveBudget = (budgetData) => api.post('/budgets', budgetData);
+export const backfillSubcategories = () => api.post('/transactions/backfill-subcategories');
