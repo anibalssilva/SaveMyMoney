@@ -146,12 +146,12 @@ const DashboardPage = () => {
     };
   }, [filteredTransactions]);
 
-  // Format month name
+  // Format month name (only month, no year)
   const getMonthName = (monthKey) => {
     if (monthKey === 'all') return 'Todos os Meses';
-    const [year, month] = monthKey.split('-');
-    const date = new Date(year, month - 1);
-    return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const [, month] = monthKey.split('-');
+    const date = new Date(2000, parseInt(month, 10) - 1, 1);
+    return date.toLocaleDateString('pt-BR', { month: 'long' });
   };
 
   if (loading) {
