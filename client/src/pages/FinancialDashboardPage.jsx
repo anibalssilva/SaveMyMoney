@@ -33,8 +33,14 @@ const FinancialDashboardPage = () => {
   const [openYears, setOpenYears] = useState(false);
   const monthsRef = useRef(null);
   const yearsRef = useRef(null);
-  // Full month list (always 12)
-  const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  // Full month list (always 12) - uppercase display standard
+  const MONTH_NAMES = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+
+  // Display formatter for categories/subcategories: first letter uppercase, others lowercase
+  const formatCap = (s) => {
+    if (!s || typeof s !== 'string') return s;
+    return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  };
 
   // Helpers to toggle month/year selections
   const toggleMonth = (monthNumber) => {
@@ -290,9 +296,10 @@ const FinancialDashboardPage = () => {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10);
 
-      const labels = sorted.map(([name]) => name);
+      const keys = sorted.map(([name]) => name);
+      const labels = keys.map(formatCap);
       const data = sorted.map(([, amount]) => amount);
-      const { bgColors, borderColors } = colorsForKeys(labels);
+      const { bgColors, borderColors } = colorsForKeys(keys);
       return {
         labels,
         datasets: [{
@@ -317,9 +324,10 @@ const FinancialDashboardPage = () => {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10);
 
-      const labels = sorted.map(([name]) => name);
+      const keys = sorted.map(([name]) => name);
+      const labels = keys.map(formatCap);
       const data = sorted.map(([, amount]) => amount);
-      const { bgColors, borderColors } = colorsForKeys(labels);
+      const { bgColors, borderColors } = colorsForKeys(keys);
       return {
         labels,
         datasets: [{
@@ -351,7 +359,7 @@ const FinancialDashboardPage = () => {
       .slice(0, 10);
 
     const values = sorted.map(([value]) => value);
-    const labels = values.map((value) => subcategoryLabels.get(value) || value);
+    const labels = values.map((value) => formatCap(subcategoryLabels.get(value) || value));
     const data = sorted.map(([, amount]) => amount);
     const { bgColors, borderColors } = colorsForKeys(values.map(v => `${selectedBarCategory}:${v}`));
     return {
@@ -485,7 +493,7 @@ const FinancialDashboardPage = () => {
     ];
 
     return {
-      labels: sortedCategories.map(([category]) => category),
+      labels: sortedCategories.map(([category]) => formatCap(category)),
       datasets: [{
         label: 'Total',
         data: sortedCategories.map(([, total]) => total),
@@ -891,7 +899,7 @@ const FinancialDashboardPage = () => {
                   >
                     <option value="all">Todas as Categorias</option>
                     {expenseCategories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
+                      <option key={cat} value={cat}>{formatCap(cat)}</option>
                     ))}
                   </select>
                 </div>
@@ -905,7 +913,7 @@ const FinancialDashboardPage = () => {
                   >
                     <option value="all">Todas as Subcategorias</option>
                     {availableSubcategories.map(subcategory => (
-                      <option key={subcategory.value} value={subcategory.value}>{subcategory.label}</option>
+                      <option key={subcategory.value} value={subcategory.value}>{formatCap(subcategory.label)}</option>
                     ))}
                   </select>
                 </div>

@@ -542,7 +542,7 @@ const TransactionsPage = ({ setAlert }) => {
                   <option value="">Selecione uma categoria</option>
                   {(formData.type === 'income' ? incomeCategories : availableCategories).map(cat => (
                     <option key={cat.id} value={cat.id}>
-                      {cat.emoji} {cat.name}
+                      {cat.emoji} {cat.name && (cat.name.charAt(0).toUpperCase() + cat.name.slice(1).toLowerCase())}
                     </option>
                   ))}
                 </select>
@@ -562,7 +562,7 @@ const TransactionsPage = ({ setAlert }) => {
                   >
                     {subcategories.map(subcat => (
                       <option key={subcat.id} value={subcat.id}>
-                        {subcat.emoji} {subcat.name}
+                        {subcat.emoji} {subcat.name && (subcat.name.charAt(0).toUpperCase() + subcat.name.slice(1).toLowerCase())}
                       </option>
                     ))}
                   </select>
@@ -787,7 +787,7 @@ const TransactionsPage = ({ setAlert }) => {
                       </div>
                     </td>
                     <td className="td-category">
-                      <span className="category-badge">{transaction.category}</span>
+                      <span className="category-badge">{transaction.category && (transaction.category.charAt(0).toUpperCase() + transaction.category.slice(1).toLowerCase())}</span>
                     </td>
                     <td className="td-date">
                       {new Date(transaction.date).toLocaleDateString('pt-BR')}
