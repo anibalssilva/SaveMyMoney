@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getTransactions, createTransaction, updateTransaction, deleteTransaction } from '../services/api';
 import api from '../services/api';
 import Toast from '../components/Toast';
@@ -32,8 +32,10 @@ const TransactionsPage = ({ setAlert }) => {
   const [filterType, setFilterType] = useState('all'); // all, expense, income
   const [filterCategory, setFilterCategory] = useState('all');
   const [sortBy, setSortBy] = useState('date-desc'); // date-desc, date-asc, amount-desc, amount-asc
-  const [filterMonth, setFilterMonth] = useState('all'); // 1..12 or 'all'
+  const [selectedMonths, setSelectedMonths] = useState([]); // [] => todos os meses
   const [filterYear, setFilterYear] = useState('all'); // yyyy or 'all'
+  const [openMonths, setOpenMonths] = useState(false);
+  const monthsRef = useRef(null);
 
   useEffect(() => {
     loadTransactions();
@@ -106,6 +108,31 @@ const TransactionsPage = ({ setAlert }) => {
 
   const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
+  // Multi-month dropdown helpers
+  const toggleMonth = (monthNumber) => {
+    setSelectedMonths(prev => prev.includes(monthNumber)
+      ? prev.filter(m => m !== monthNumber)
+      : [...prev, monthNumber]
+    );
+  };
+
+  const clearMonths = () => { setSelectedMonths([]); setOpenMonths(false); };
+
+  const selectedMonthsLabel = useMemo(() => {
+    if (selectedMonths.length === 0) return 'Todos os Meses';
+    if (selectedMonths.length === 1) return MONTH_NAMES[selectedMonths[0] - 1];
+    if (selectedMonths.length === 2) return `${MONTH_NAMES[selectedMonths[0] - 1]}, ${MONTH_NAMES[selectedMonths[1] - 1]}`;
+    return `${selectedMonths.length} meses selecionados`;
+  }, [selectedMonths]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (monthsRef.current && !monthsRef.current.contains(e.target)) setOpenMonths(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   // Filter and sort transactions
   const filteredTransactions = useMemo(() => {
     let filtered = [...transactions];
@@ -133,9 +160,9 @@ const TransactionsPage = ({ setAlert }) => {
       filtered = filtered.filter(t => (new Date(t.date).getFullYear()) === parseInt(filterYear, 10));
     }
 
-    // Month filter (if set, applies across selected year or across all years if year = all)
-    if (filterMonth !== 'all') {
-      filtered = filtered.filter(t => (new Date(t.date).getMonth() + 1) === parseInt(filterMonth, 10));
+    // Month filter (multi)
+    if (selectedMonths.length > 0) {
+      filtered = filtered.filter(t => selectedMonths.includes(new Date(t.date).getMonth() + 1));
     }
 
     // Sorting
@@ -155,7 +182,7 @@ const TransactionsPage = ({ setAlert }) => {
     });
 
     return filtered;
-  }, [transactions, searchTerm, filterType, filterCategory, filterMonth, filterYear, sortBy]);
+  }, [transactions, searchTerm, filterType, filterCategory, selectedMonths, filterYear, sortBy]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -340,7 +367,7 @@ const TransactionsPage = ({ setAlert }) => {
     setSearchTerm('');
     setFilterType('all');
     setFilterCategory('all');
-    setFilterMonth('all');
+    setSelectedMonths([]);
     setFilterYear('all');
     setSortBy('date-desc');
   };
@@ -626,18 +653,36 @@ const TransactionsPage = ({ setAlert }) => {
             </select>
           </div>
 
-          <div className="filter-group">
+          <div className="filter-group" ref={monthsRef}>
             <label>🗓️ Mês</label>
-            <select
-              className="filter-select"
-              value={filterMonth}
-              onChange={(e) => setFilterMonth(e.target.value)}
+            <button
+              type="button"
+              className="multi-dd-toggle"
+              onClick={() => setOpenMonths(v => !v)}
             >
-              <option value="all">Todos os Meses</option>
-              {MONTH_NAMES.map((name, idx) => (
-                <option key={idx+1} value={idx+1}>{name}</option>
-              ))}
-            </select>
+              <span>{selectedMonthsLabel}</span>
+              <span className="caret">▾</span>
+            </button>
+            {openMonths && (
+              <div className="multi-dd-panel">
+                <label className={`multi-option ${selectedMonths.length === 0 ? 'active' : ''}`}>
+                  <input type="checkbox" checked={selectedMonths.length === 0} onChange={clearMonths} />
+                  Todos os Meses
+                </label>
+                <div className="multi-options is-expanded">
+                  {MONTH_NAMES.map((name, idx) => {
+                    const value = idx + 1;
+                    const checked = selectedMonths.includes(value);
+                    return (
+                      <label key={value} className={`multi-option ${checked ? 'active' : ''}`}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleMonth(value)} />
+                        {name}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="filter-group">
