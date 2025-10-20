@@ -19,6 +19,11 @@ const FinancialDashboardPage = () => {
   const [selectedSubcategory, setSelectedSubcategory] = useState('all');
   const [apiSubcategories, setApiSubcategories] = useState([]); // opções vindas do servidor
   const [showStatsValues, setShowStatsValues] = useState(false); // mostrar/ocultar valores dos cards
+  // Dropdown open states
+  const [openMonths, setOpenMonths] = useState(false);
+  const [openYears, setOpenYears] = useState(false);
+  const monthsRef = React.useRef(null);
+  const yearsRef = React.useRef(null);
   
   // Helpers to toggle month/year selections
   const toggleMonth = (monthNumber) => {
@@ -38,6 +43,30 @@ const FinancialDashboardPage = () => {
       return [...prev, yearNumber];
     });
   };
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (monthsRef.current && !monthsRef.current.contains(e.target)) setOpenMonths(false);
+      if (yearsRef.current && !yearsRef.current.contains(e.target)) setOpenYears(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const selectedMonthsLabel = useMemo(() => {
+    if (selectedMonths.length === 0) return 'Todos os Meses';
+    if (selectedMonths.length === 1) return MONTH_NAMES[selectedMonths[0] - 1];
+    if (selectedMonths.length === 2) return `${MONTH_NAMES[selectedMonths[0] - 1]}, ${MONTH_NAMES[selectedMonths[1] - 1]}`;
+    return `${selectedMonths.length} meses selecionados`;
+  }, [selectedMonths]);
+
+  const selectedYearsLabel = useMemo(() => {
+    if (selectedYears.length === 0) return 'Todos os Anos';
+    if (selectedYears.length === 1) return String(selectedYears[0]);
+    if (selectedYears.length === 2) return `${selectedYears[0]}, ${selectedYears[1]}`;
+    return `${selectedYears.length} anos selecionados`;
+  }, [selectedYears]);
 
   useEffect(() => {
     fetchTransactions();
@@ -639,63 +668,83 @@ const FinancialDashboardPage = () => {
             </select>
           </div>
 
-          <div className="filter-group">
+          <div className="filter-group" ref={monthsRef}>
             <label className="filter-label">Mês</label>
-            <div className="multi-select">
-              <label className={`multi-option ${selectedMonths.length === 0 ? 'active' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={selectedMonths.length === 0}
-                  onChange={() => setSelectedMonths([])}
-                />
-                Todos os Meses
-              </label>
-              <div className={`multi-options ${selectedMonths.length === 0 ? 'is-collapsed' : 'is-expanded'}`}>
-                {MONTH_NAMES.map((name, idx) => {
-                  const value = idx + 1;
-                  const checked = selectedMonths.includes(value);
-                  return (
-                    <label key={value} className={`multi-option ${checked ? 'active' : ''}`}>
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleMonth(value)}
-                      />
-                      {name}
-                    </label>
-                  );
-                })}
+            <button
+              type="button"
+              className={`multi-dd-toggle ${openMonths ? 'open' : ''}`}
+              onClick={() => setOpenMonths(v => !v)}
+            >
+              <span>{selectedMonthsLabel}</span>
+              <span className="caret">▾</span>
+            </button>
+            {openMonths && (
+              <div className="multi-dd-panel">
+                <label className={`multi-option ${selectedMonths.length === 0 ? 'active' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={selectedMonths.length === 0}
+                    onChange={() => setSelectedMonths([])}
+                  />
+                  Todos os Meses
+                </label>
+                <div className="multi-options is-expanded">
+                  {MONTH_NAMES.map((name, idx) => {
+                    const value = idx + 1;
+                    const checked = selectedMonths.includes(value);
+                    return (
+                      <label key={value} className={`multi-option ${checked ? 'active' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleMonth(value)}
+                        />
+                        {name}
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
-          <div className="filter-group">
+          <div className="filter-group" ref={yearsRef}>
             <label className="filter-label">Ano</label>
-            <div className="multi-select">
-              <label className={`multi-option ${selectedYears.length === 0 ? 'active' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={selectedYears.length === 0}
-                  onChange={() => setSelectedYears([])}
-                />
-                Todos os Anos
-              </label>
-              <div className={`multi-options ${selectedYears.length === 0 ? 'is-collapsed' : 'is-expanded'}`}>
-                {availableYears.map((year) => {
-                  const checked = selectedYears.includes(year);
-                  return (
-                    <label key={year} className={`multi-option ${checked ? 'active' : ''}`}>
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleYear(year)}
-                      />
-                      {year}
-                    </label>
-                  );
-                })}
+            <button
+              type="button"
+              className={`multi-dd-toggle ${openYears ? 'open' : ''}`}
+              onClick={() => setOpenYears(v => !v)}
+            >
+              <span>{selectedYearsLabel}</span>
+              <span className="caret">▾</span>
+            </button>
+            {openYears && (
+              <div className="multi-dd-panel">
+                <label className={`multi-option ${selectedYears.length === 0 ? 'active' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={selectedYears.length === 0}
+                    onChange={() => setSelectedYears([])}
+                  />
+                  Todos os Anos
+                </label>
+                <div className="multi-options is-expanded">
+                  {availableYears.map((year) => {
+                    const checked = selectedYears.includes(year);
+                    return (
+                      <label key={year} className={`multi-option ${checked ? 'active' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleYear(year)}
+                        />
+                        {year}
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
