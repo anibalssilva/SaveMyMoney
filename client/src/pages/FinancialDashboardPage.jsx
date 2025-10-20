@@ -11,8 +11,9 @@ const FinancialDashboardPage = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedType, setSelectedType] = useState('all'); // expense, income, all
-  const [selectedMonth, setSelectedMonth] = useState('all');
-  const [selectedYear, setSelectedYear] = useState('all');
+  // Multi-select filters
+  const [selectedMonths, setSelectedMonths] = useState([]); // [] => todos os meses
+  const [selectedYears, setSelectedYears] = useState([]);   // [] => todos os anos
   const [selectedBarCategory, setSelectedBarCategory] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSubcategory, setSelectedSubcategory] = useState('all');
@@ -35,20 +36,8 @@ const FinancialDashboardPage = () => {
     }
   };
 
-  // Get available months and years
-  const availableMonths = useMemo(() => {
-    const months = new Set();
-    transactions.forEach(t => {
-      const date = new Date(t.date);
-      const year = date.getFullYear();
-      if (selectedYear !== 'all' && year !== parseInt(selectedYear)) {
-        return;
-      }
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      months.add(monthKey);
-    });
-    return Array.from(months).sort((a, b) => b.localeCompare(a));
-  }, [transactions, selectedYear]);
+  // Full month list (always 12)
+  const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
   const availableYears = useMemo(() => {
     const years = new Set();
@@ -71,20 +60,15 @@ const FinancialDashboardPage = () => {
     return transactions.filter(t => {
       if (selectedType !== 'all' && t.type !== selectedType) return false;
 
-      if (selectedMonth !== 'all') {
-        const tDate = new Date(t.date);
-        const tMonthKey = `${tDate.getFullYear()}-${String(tDate.getMonth() + 1).padStart(2, '0')}`;
-        if (tMonthKey !== selectedMonth) return false;
-      }
-
-      if (selectedYear !== 'all') {
-        const tDate = new Date(t.date);
-        if (tDate.getFullYear() !== parseInt(selectedYear)) return false;
-      }
+      const tDate = new Date(t.date);
+      const tMonth = tDate.getMonth() + 1; // 1-12
+      const tYear = tDate.getFullYear();
+      if (selectedMonths.length > 0 && !selectedMonths.includes(tMonth)) return false;
+      if (selectedYears.length > 0 && !selectedYears.includes(tYear)) return false;
 
       return true;
     });
-  }, [transactions, selectedType, selectedMonth, selectedYear]);
+  }, [transactions, selectedType, selectedMonths, selectedYears]);
 
   const availableCategories = useMemo(() => {
     const categories = new Set();
@@ -260,64 +244,59 @@ const FinancialDashboardPage = () => {
     };
   }, [barChartTransactions, selectedBarCategory, barFocusType]);
 
-  // Prepare data for Line Chart (income vs expense over time)
+  // Prepare data for Line Chart (income vs expense over time) with multi-month/year filters
   const lineChartData = useMemo(() => {
-    // Build daily totals for both types, respecting month/year filters
-    const incomeDaily = {};
-    const expenseDaily = {};
-
-    transactions.forEach(t => {
-      // Filter by selected month/year only (show both types together)
-      const dateObj = new Date(t.date);
-      const tMonthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
-      if (selectedMonth !== 'all' && tMonthKey !== selectedMonth) return;
-      if (selectedYear !== 'all' && dateObj.getFullYear() !== parseInt(selectedYear)) return;
-
-      // Optional: respect selectedCategory if ever set (UI hidden)
-      if (selectedCategory !== 'all' && t.category !== selectedCategory) return;
-
-      const dateKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-      if (t.type === 'income') {
-        incomeDaily[dateKey] = (incomeDaily[dateKey] || 0) + t.amount;
-      } else if (t.type === 'expense') {
-        expenseDaily[dateKey] = (expenseDaily[dateKey] || 0) + t.amount;
-      }
-    });
-
-    const allDates = Array.from(new Set([...Object.keys(incomeDaily), ...Object.keys(expenseDaily)])).sort();
-
-    const groupByMonth = allDates.length > 60; // many points → group by month
-
-    const toMonthly = (dailyObj) => {
-      const monthly = {};
-      Object.entries(dailyObj).forEach(([d, val]) => {
-        const m = d.substring(0, 7); // YYYY-MM
-        monthly[m] = (monthly[m] || 0) + val;
-      });
-      return monthly;
+    const passSelections = (t) => {
+      const d = new Date(t.date);
+      const m = d.getMonth() + 1;
+      const y = d.getFullYear();
+      if (selectedMonths.length > 0 && !selectedMonths.includes(m)) return false;
+      if (selectedYears.length > 0 && !selectedYears.includes(y)) return false;
+      if (selectedCategory !== 'all' && t.category !== selectedCategory) return false;
+      return true;
     };
+
+    const filtered = transactions.filter(passSelections);
+    const singleMonthAndYear = selectedMonths.length === 1 && selectedYears.length === 1;
 
     let labels = [];
     let incomeSeries = [];
     let expenseSeries = [];
 
-    if (groupByMonth) {
-      const incomeMonthly = toMonthly(incomeDaily);
-      const expenseMonthly = toMonthly(expenseDaily);
-      const months = Array.from(new Set([...Object.keys(incomeMonthly), ...Object.keys(expenseMonthly)])).sort();
-      labels = months.map(m => {
-        const [year, month] = m.split('-');
-        return `${getMonthName(parseInt(month))}/${year}`;
+    if (singleMonthAndYear) {
+      const targetMonth = selectedMonths[0];
+      const targetYear = selectedYears[0];
+      const incomeByDay = {};
+      const expenseByDay = {};
+
+      filtered.forEach(t => {
+        const d = new Date(t.date);
+        if (d.getMonth() + 1 !== targetMonth || d.getFullYear() !== targetYear) return;
+        const day = d.getDate();
+        if (t.type === 'income') incomeByDay[day] = (incomeByDay[day] || 0) + t.amount;
+        else if (t.type === 'expense') expenseByDay[day] = (expenseByDay[day] || 0) + t.amount;
       });
-      incomeSeries = months.map(m => incomeMonthly[m] || 0);
-      expenseSeries = months.map(m => expenseMonthly[m] || 0);
+
+      const days = Array.from(new Set([...Object.keys(incomeByDay), ...Object.keys(expenseByDay)]))
+        .map(n => parseInt(n, 10))
+        .sort((a, b) => a - b);
+      labels = days.map(d => `${String(d).padStart(2, '0')}/${String(targetMonth).padStart(2, '0')}`);
+      incomeSeries = days.map(d => incomeByDay[d] || 0);
+      expenseSeries = days.map(d => expenseByDay[d] || 0);
     } else {
-      labels = allDates.map(d => {
-        const [, month, day] = d.split('-');
-        return `${day}/${month}`;
+      const incomeByMonth = {};
+      const expenseByMonth = {};
+      filtered.forEach(t => {
+        const d = new Date(t.date);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (t.type === 'income') incomeByMonth[key] = (incomeByMonth[key] || 0) + t.amount;
+        else if (t.type === 'expense') expenseByMonth[key] = (expenseByMonth[key] || 0) + t.amount;
       });
-      incomeSeries = allDates.map(d => incomeDaily[d] || 0);
-      expenseSeries = allDates.map(d => expenseDaily[d] || 0);
+
+      const months = Array.from(new Set([...Object.keys(incomeByMonth), ...Object.keys(expenseByMonth)])).sort();
+      labels = months.map(m => MONTH_NAMES[parseInt(m.split('-')[1], 10) - 1]);
+      incomeSeries = months.map(m => incomeByMonth[m] || 0);
+      expenseSeries = months.map(m => expenseByMonth[m] || 0);
     }
 
     return {
@@ -326,7 +305,7 @@ const FinancialDashboardPage = () => {
         {
           label: 'Receitas',
           data: incomeSeries,
-          borderColor: 'rgba(59, 130, 246, 1)', // blue
+          borderColor: 'rgba(59, 130, 246, 1)',
           backgroundColor: 'rgba(59, 130, 246, 0.1)',
           borderWidth: 3,
           fill: true,
@@ -340,7 +319,7 @@ const FinancialDashboardPage = () => {
         {
           label: 'Despesas',
           data: expenseSeries,
-          borderColor: 'rgba(239, 68, 68, 1)', // red
+          borderColor: 'rgba(239, 68, 68, 1)',
           backgroundColor: 'rgba(239, 68, 68, 0.1)',
           borderWidth: 3,
           fill: true,
@@ -353,7 +332,7 @@ const FinancialDashboardPage = () => {
         },
       ]
     };
-  }, [transactions, selectedMonth, selectedYear, selectedCategory]);
+  }, [transactions, selectedMonths, selectedYears, selectedCategory]);
 
   // Prepare data for Pie Chart (category distribution)
   const pieChartData = useMemo(() => {
@@ -593,22 +572,10 @@ const FinancialDashboardPage = () => {
     }
   }, [expenseCategories, selectedBarCategory]);
 
-  useEffect(() => {
-    if (selectedMonth !== 'all' && !availableMonths.includes(selectedMonth)) {
-      setSelectedMonth('all');
-    }
-  }, [availableMonths, selectedMonth]);
-
-  useEffect(() => {
-    if (selectedYear !== 'all' && !availableYears.includes(parseInt(selectedYear, 10))) {
-      setSelectedYear('all');
-    }
-  }, [availableYears, selectedYear]);
-
   const clearFilters = () => {
     setSelectedType('all');
-    setSelectedMonth('all');
-    setSelectedYear('all');
+    setSelectedMonths([]);
+    setSelectedYears([]);
     setSelectedCategory('all');
     setSelectedSubcategory('all');
     setSelectedBarCategory('all');
@@ -657,18 +624,21 @@ const FinancialDashboardPage = () => {
             <label className="filter-label">Mês</label>
             <select
               className="filter-select"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
+              multiple
+              value={selectedMonths.length === 0 ? ['all'] : selectedMonths.map(String)}
+              onChange={(e) => {
+                const values = Array.from(e.target.selectedOptions).map(o => o.value);
+                if (values.includes('all') || values.length === 0) {
+                  setSelectedMonths([]);
+                } else {
+                  setSelectedMonths(values.map(v => parseInt(v, 10)));
+                }
+              }}
             >
               <option value="all">Todos os Meses</option>
-              {availableMonths.map(month => {
-                const [year, m] = month.split('-');
-                return (
-                  <option key={month} value={month}>
-                    {getMonthName(parseInt(m))} {year}
-                  </option>
-                );
-              })}
+              {MONTH_NAMES.map((name, idx) => (
+                <option key={idx + 1} value={idx + 1}>{name}</option>
+              ))}
             </select>
           </div>
 
@@ -676,8 +646,16 @@ const FinancialDashboardPage = () => {
             <label className="filter-label">Ano</label>
             <select
               className="filter-select"
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
+              multiple
+              value={selectedYears.length === 0 ? ['all'] : selectedYears.map(String)}
+              onChange={(e) => {
+                const values = Array.from(e.target.selectedOptions).map(o => o.value);
+                if (values.includes('all') || values.length === 0) {
+                  setSelectedYears([]);
+                } else {
+                  setSelectedYears(values.map(v => parseInt(v, 10)));
+                }
+              }}
             >
               <option value="all">Todos os Anos</option>
               {availableYears.map(year => (
@@ -687,7 +665,7 @@ const FinancialDashboardPage = () => {
           </div>
         </div>
 
-        {(selectedType !== 'all' || selectedMonth !== 'all' || selectedYear !== 'all' || selectedCategory !== 'all') && (
+        {(selectedType !== 'all' || selectedMonths.length > 0 || selectedYears.length > 0 || selectedCategory !== 'all') && (
           <button className="clear-filters-btn" onClick={clearFilters}>
             ✖ Limpar Filtros
           </button>
