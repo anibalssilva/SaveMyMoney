@@ -17,6 +17,7 @@ const FinancialDashboardPage = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSubcategory, setSelectedSubcategory] = useState('all');
   const [apiSubcategories, setApiSubcategories] = useState([]); // opções vindas do servidor
+  const [showStatsValues, setShowStatsValues] = useState(false); // mostrar/ocultar valores dos cards
 
   useEffect(() => {
     fetchTransactions();
@@ -661,21 +662,6 @@ const FinancialDashboardPage = () => {
               ))}
             </select>
           </div>
-
-          <div className="filter-group">
-            <label className="filter-label">Categoria</label>
-            <select
-              className="filter-select"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              disabled={availableCategories.length === 0}
-            >
-              <option value="all">Todas as Categorias</option>
-              {availableCategories.map(category => (
-                <option key={category} value={category}>{category}</option>
-              ))}
-            </select>
-          </div>
         </div>
 
         {(selectedType !== 'expense' || selectedMonth !== 'all' || selectedYear !== 'all' || selectedCategory !== 'all') && (
@@ -685,23 +671,31 @@ const FinancialDashboardPage = () => {
         )}
       </div>
 
+      {/* Statistics Controls + Cards */}
+      <div className="stats-controls">
+        <button
+          className="stats-toggle-btn"
+          onClick={() => setShowStatsValues(v => !v)}
+        >
+          {showStatsValues ? '🙈 Ocultar valores' : '👁️ Mostrar valores'}
+        </button>
+      </div>
       {/* Statistics Cards */}
       <div className="stats-grid">
+        <div className="stat-card stat-card-income">
+          <div className="stat-icon">💰</div>
+          <div className="stat-content">
+            <div className="stat-label">Receitas</div>
+            <div className="stat-value">{showStatsValues ? currencyFormatter.format(stats.totalIncome) : '••••'}</div>
+            <div className="stat-detail">{showStatsValues ? `${stats.incomeCount} transações` : '—'}</div>
+          </div>
+        </div>
         <div className="stat-card stat-card-expense">
           <div className="stat-icon">💸</div>
           <div className="stat-content">
             <div className="stat-label">Despesas</div>
-            <div className="stat-value">{currencyFormatter.format(stats.totalExpenses)}</div>
-            <div className="stat-detail">{stats.expenseCount} transações</div>
-          </div>
-        </div>
-
-        <div className="stat-card stat-card-info">
-          <div className="stat-icon">📊</div>
-          <div className="stat-content">
-            <div className="stat-label">Total</div>
-            <div className="stat-value">{filteredTransactions.length.toLocaleString('pt-BR')}</div>
-            <div className="stat-detail">transações filtradas</div>
+            <div className="stat-value">{showStatsValues ? currencyFormatter.format(stats.totalExpenses) : '••••'}</div>
+            <div className="stat-detail">{showStatsValues ? `${stats.expenseCount} transações` : '—'}</div>
           </div>
         </div>
       </div>
