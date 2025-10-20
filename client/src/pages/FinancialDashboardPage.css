@@ -185,9 +185,28 @@
 }
 
 .multi-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 6px;
+  overflow-y: auto;
+}
+
+/* Collapsed to one row (approx) */
+.multi-options.is-collapsed {
+  max-height: 38px; /* ~1 linha */
+}
+
+/* Expanded to ~3 rows */
+.multi-options.is-expanded {
+  max-height: 120px; /* ~3 linhas, com rolagem */
+}
+
+.multi-options::-webkit-scrollbar {
+  width: 6px;
+}
+.multi-options::-webkit-scrollbar-thumb {
+  background: var(--cyber-border);
+  border-radius: 6px;
 }
 
 .multi-option {

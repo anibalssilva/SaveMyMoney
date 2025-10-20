@@ -650,7 +650,7 @@ const FinancialDashboardPage = () => {
                 />
                 Todos os Meses
               </label>
-              <div className="multi-options">
+              <div className={`multi-options ${selectedMonths.length === 0 ? 'is-collapsed' : 'is-expanded'}`}>
                 {MONTH_NAMES.map((name, idx) => {
                   const value = idx + 1;
                   const checked = selectedMonths.includes(value);
@@ -680,7 +680,7 @@ const FinancialDashboardPage = () => {
                 />
                 Todos os Anos
               </label>
-              <div className="multi-options">
+              <div className={`multi-options ${selectedYears.length === 0 ? 'is-collapsed' : 'is-expanded'}`}>
                 {availableYears.map((year) => {
                   const checked = selectedYears.includes(year);
                   return (
