@@ -173,6 +173,46 @@
   background: rgba(15, 15, 35, 0.6);
 }
 
+/* Multi checkbox selector */
+.multi-select {
+  border: 1px solid var(--cyber-border);
+  background: rgba(15, 15, 35, 0.6);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.multi-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 6px;
+}
+
+.multi-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  user-select: none;
+}
+
+.multi-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--cyber-primary);
+}
+
+.multi-option.active {
+  border-color: var(--cyber-primary);
+  background: rgba(0, 240, 255, 0.08);
+}
+
 .clear-filters-btn {
   padding: var(--space-sm) var(--space-lg);
   background: linear-gradient(135deg, #ef4444, #dc2626);

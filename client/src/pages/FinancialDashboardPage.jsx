@@ -19,6 +19,25 @@ const FinancialDashboardPage = () => {
   const [selectedSubcategory, setSelectedSubcategory] = useState('all');
   const [apiSubcategories, setApiSubcategories] = useState([]); // opções vindas do servidor
   const [showStatsValues, setShowStatsValues] = useState(false); // mostrar/ocultar valores dos cards
+  
+  // Helpers to toggle month/year selections
+  const toggleMonth = (monthNumber) => {
+    setSelectedMonths(prev => {
+      if (prev.includes(monthNumber)) {
+        return prev.filter(m => m !== monthNumber);
+      }
+      return [...prev, monthNumber];
+    });
+  };
+
+  const toggleYear = (yearNumber) => {
+    setSelectedYears(prev => {
+      if (prev.includes(yearNumber)) {
+        return prev.filter(y => y !== yearNumber);
+      }
+      return [...prev, yearNumber];
+    });
+  };
 
   useEffect(() => {
     fetchTransactions();
@@ -622,46 +641,61 @@ const FinancialDashboardPage = () => {
 
           <div className="filter-group">
             <label className="filter-label">Mês</label>
-            <select
-              className="filter-select"
-              multiple
-              value={selectedMonths.length === 0 ? ['all'] : selectedMonths.map(String)}
-              onChange={(e) => {
-                const values = Array.from(e.target.selectedOptions).map(o => o.value);
-                if (values.includes('all') || values.length === 0) {
-                  setSelectedMonths([]);
-                } else {
-                  setSelectedMonths(values.map(v => parseInt(v, 10)));
-                }
-              }}
-            >
-              <option value="all">Todos os Meses</option>
-              {MONTH_NAMES.map((name, idx) => (
-                <option key={idx + 1} value={idx + 1}>{name}</option>
-              ))}
-            </select>
+            <div className="multi-select">
+              <label className={`multi-option ${selectedMonths.length === 0 ? 'active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={selectedMonths.length === 0}
+                  onChange={() => setSelectedMonths([])}
+                />
+                Todos os Meses
+              </label>
+              <div className="multi-options">
+                {MONTH_NAMES.map((name, idx) => {
+                  const value = idx + 1;
+                  const checked = selectedMonths.includes(value);
+                  return (
+                    <label key={value} className={`multi-option ${checked ? 'active' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleMonth(value)}
+                      />
+                      {name}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           <div className="filter-group">
             <label className="filter-label">Ano</label>
-            <select
-              className="filter-select"
-              multiple
-              value={selectedYears.length === 0 ? ['all'] : selectedYears.map(String)}
-              onChange={(e) => {
-                const values = Array.from(e.target.selectedOptions).map(o => o.value);
-                if (values.includes('all') || values.length === 0) {
-                  setSelectedYears([]);
-                } else {
-                  setSelectedYears(values.map(v => parseInt(v, 10)));
-                }
-              }}
-            >
-              <option value="all">Todos os Anos</option>
-              {availableYears.map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
+            <div className="multi-select">
+              <label className={`multi-option ${selectedYears.length === 0 ? 'active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={selectedYears.length === 0}
+                  onChange={() => setSelectedYears([])}
+                />
+                Todos os Anos
+              </label>
+              <div className="multi-options">
+                {availableYears.map((year) => {
+                  const checked = selectedYears.includes(year);
+                  return (
+                    <label key={year} className={`multi-option ${checked ? 'active' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleYear(year)}
+                      />
+                      {year}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
 
