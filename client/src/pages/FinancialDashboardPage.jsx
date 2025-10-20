@@ -1010,7 +1010,7 @@ const FinancialDashboardPage = () => {
                   <label className="chart-control-label">Visão:</label>
                   <select className="filter-select" value={pieMode} onChange={(e) => setPieMode(e.target.value)}>
                     <option value="totals">Totais (Receita x Despesa)</option>
-                    <option value="income-cat-subcat">Receita / Categoria / Subcategoria</option>
+                    <option value="income-category">Receita / Categoria</option>
                   </select>
                 </div>
               </div>
