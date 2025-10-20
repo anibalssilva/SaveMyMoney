@@ -260,77 +260,100 @@ const FinancialDashboardPage = () => {
     };
   }, [barChartTransactions, selectedBarCategory, barFocusType]);
 
-  // Prepare data for Line Chart (over time)
+  // Prepare data for Line Chart (income vs expense over time)
   const lineChartData = useMemo(() => {
-    const dailyTotals = {};
+    // Build daily totals for both types, respecting month/year filters
+    const incomeDaily = {};
+    const expenseDaily = {};
 
-    filteredTransactions.forEach(t => {
-      const date = new Date(t.date);
-      const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    transactions.forEach(t => {
+      // Filter by selected month/year only (show both types together)
+      const dateObj = new Date(t.date);
+      const tMonthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+      if (selectedMonth !== 'all' && tMonthKey !== selectedMonth) return;
+      if (selectedYear !== 'all' && dateObj.getFullYear() !== parseInt(selectedYear)) return;
 
-      if (!dailyTotals[dateKey]) {
-        dailyTotals[dateKey] = 0;
+      // Optional: respect selectedCategory if ever set (UI hidden)
+      if (selectedCategory !== 'all' && t.category !== selectedCategory) return;
+
+      const dateKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+      if (t.type === 'income') {
+        incomeDaily[dateKey] = (incomeDaily[dateKey] || 0) + t.amount;
+      } else if (t.type === 'expense') {
+        expenseDaily[dateKey] = (expenseDaily[dateKey] || 0) + t.amount;
       }
-      dailyTotals[dateKey] += t.amount;
     });
 
-    const sortedDates = Object.keys(dailyTotals).sort();
+    const allDates = Array.from(new Set([...Object.keys(incomeDaily), ...Object.keys(expenseDaily)])).sort();
 
-    // If too many days, group by week or month
-    let labels, data;
-    if (sortedDates.length > 60) {
-      // Group by month
-      const monthlyTotals = {};
-      sortedDates.forEach(dateKey => {
-        const monthKey = dateKey.substring(0, 7); // YYYY-MM
-        if (!monthlyTotals[monthKey]) {
-          monthlyTotals[monthKey] = 0;
-        }
-        monthlyTotals[monthKey] += dailyTotals[dateKey];
+    const groupByMonth = allDates.length > 60; // many points → group by month
+
+    const toMonthly = (dailyObj) => {
+      const monthly = {};
+      Object.entries(dailyObj).forEach(([d, val]) => {
+        const m = d.substring(0, 7); // YYYY-MM
+        monthly[m] = (monthly[m] || 0) + val;
       });
-      labels = Object.keys(monthlyTotals).map(m => {
+      return monthly;
+    };
+
+    let labels = [];
+    let incomeSeries = [];
+    let expenseSeries = [];
+
+    if (groupByMonth) {
+      const incomeMonthly = toMonthly(incomeDaily);
+      const expenseMonthly = toMonthly(expenseDaily);
+      const months = Array.from(new Set([...Object.keys(incomeMonthly), ...Object.keys(expenseMonthly)])).sort();
+      labels = months.map(m => {
         const [year, month] = m.split('-');
         return `${getMonthName(parseInt(month))}/${year}`;
       });
-      data = Object.values(monthlyTotals);
+      incomeSeries = months.map(m => incomeMonthly[m] || 0);
+      expenseSeries = months.map(m => expenseMonthly[m] || 0);
     } else {
-      labels = sortedDates.map(d => {
+      labels = allDates.map(d => {
         const [, month, day] = d.split('-');
         return `${day}/${month}`;
       });
-      data = sortedDates.map(d => dailyTotals[d]);
+      incomeSeries = allDates.map(d => incomeDaily[d] || 0);
+      expenseSeries = allDates.map(d => expenseDaily[d] || 0);
     }
 
     return {
       labels,
-      datasets: [{
-        label: selectedType === 'expense' ? 'Despesas' : selectedType === 'income' ? 'Receitas' : 'Transações',
-        data,
-        borderColor: selectedType === 'expense'
-          ? 'rgba(239, 68, 68, 1)'
-          : selectedType === 'income'
-          ? 'rgba(16, 185, 129, 1)'
-          : 'rgba(0, 240, 255, 1)',
-        backgroundColor: selectedType === 'expense'
-          ? 'rgba(239, 68, 68, 0.1)'
-          : selectedType === 'income'
-          ? 'rgba(16, 185, 129, 0.1)'
-          : 'rgba(0, 240, 255, 0.1)',
-        borderWidth: 3,
-        fill: true,
-        tension: 0.4,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        pointBackgroundColor: selectedType === 'expense'
-          ? 'rgba(239, 68, 68, 1)'
-          : selectedType === 'income'
-          ? 'rgba(16, 185, 129, 1)'
-          : 'rgba(0, 240, 255, 1)',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-      }]
+      datasets: [
+        {
+          label: 'Receitas',
+          data: incomeSeries,
+          borderColor: 'rgba(59, 130, 246, 1)', // blue
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+        },
+        {
+          label: 'Despesas',
+          data: expenseSeries,
+          borderColor: 'rgba(239, 68, 68, 1)', // red
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: 'rgba(239, 68, 68, 1)',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+        },
+      ]
     };
-  }, [filteredTransactions, selectedType]);
+  }, [transactions, selectedMonth, selectedYear, selectedCategory]);
 
   // Prepare data for Pie Chart (category distribution)
   const pieChartData = useMemo(() => {
