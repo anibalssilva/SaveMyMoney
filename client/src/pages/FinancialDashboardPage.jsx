@@ -34,7 +34,7 @@ const FinancialDashboardPage = () => {
   const monthsRef = useRef(null);
   const yearsRef = useRef(null);
   // Pie chart controls
-  const [pieMode, setPieMode] = useState('totals'); // 'totals' | 'income-expense-categories'
+  const [pieMode, setPieMode] = useState('totals'); // 'totals' | 'income-cat-subcat'
   // Full month list (always 12) - uppercase display standard
   const MONTH_NAMES = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
 
@@ -496,35 +496,42 @@ const FinancialDashboardPage = () => {
       };
     }
 
-    // Mode: Receita / Categorias de Despesas
-    if (pieMode === 'income-expense-categories') {
+    // Mode: Receita / Categoria / Subcategoria
+    if (pieMode === 'income-cat-subcat') {
       const incomeTotal = filteredTransactions.filter(t => t.type === 'income')
         .reduce((s, t) => s + t.amount, 0);
-      const expenseTotals = filteredTransactions.filter(t => t.type === 'expense')
-        .reduce((acc, t) => {
-          const cat = t.category || 'Sem Categoria';
-          acc[cat] = (acc[cat] || 0) + t.amount;
-          return acc;
-        }, {});
-      const sortedCats = Object.entries(expenseTotals).sort((a, b) => b[1] - a[1]).slice(0, 9); // top 9 + receita = máx 10
-      const catLabels = sortedCats.map(([c]) => formatCap(c));
-      const catData = sortedCats.map(([, v]) => v);
-      const labels = ['RECEITAS', ...catLabels];
-      const data = [incomeTotal, ...catData];
+
+      // Build expense slices grouped by Category/Subcategory pair
+      const subTotals = new Map();
+      const labelMap = new Map();
+      filteredTransactions.filter(t => t.type === 'expense').forEach(t => {
+        const cat = t.category || 'Sem Categoria';
+        const subId = t.subcategoryId || t.subcategory || DEFAULT_SUBCATEGORY_VALUE;
+        const subName = t.subcategory || t.subcategoryId || DEFAULT_SUBCATEGORY_LABEL;
+        const key = `${cat}::${subId}`;
+        subTotals.set(key, (subTotals.get(key) || 0) + t.amount);
+        if (!labelMap.has(key)) {
+          labelMap.set(key, `${formatCap(cat)} / ${formatCap(subName)}`);
+        }
+      });
+
+      const sorted = Array.from(subTotals.entries()).sort((a, b) => b[1] - a[1]).slice(0, 11); // 1 receita + 11 pares = 12 fatias
+      const keys = sorted.map(([k]) => k);
+      const expenseLabels = keys.map(k => labelMap.get(k) || k);
+      const expenseData = sorted.map(([, v]) => v);
+
+      const labels = ['RECEITAS', ...expenseLabels];
+      const data = [incomeTotal, ...expenseData];
+
       const blue = 'rgba(59, 130, 246,';
-      const red = 'rgba(239, 68, 68,';
-      const backgroundColor = [
-        `${blue}0.85)`,
-        ...catLabels.map(() => `${red}0.85)`)
-      ];
-      const borderColor = [
-        `${blue}1)`,
-        ...catLabels.map(() => `${red}1)`)
-      ];
+      const { bgColors, borderColors } = colorsForKeys(keys);
+      const backgroundColor = [`${blue}0.85)`, ...bgColors];
+      const borderColor = [`${blue}1)`, ...borderColors];
+
       return {
         labels,
         datasets: [{
-          label: 'Receita / Categorias de Despesas',
+          label: 'Receita / Categoria / Subcategoria',
           data,
           backgroundColor,
           borderColor,
@@ -680,9 +687,21 @@ const FinancialDashboardPage = () => {
           padding: 12,
           boxWidth: 15,
           boxHeight: 15,
+          // Generate labels per data item so Totais mostre RECEITAS e DESPESAS
           generateLabels: (chart) => {
-            const base = ChartJS.defaults.plugins.legend.labels.generateLabels(chart);
-            return base.map(item => ({ ...item, strokeStyle: 'rgba(0,0,0,0)', lineWidth: 0 }));
+            const labels = chart.data.labels || [];
+            const dataset = chart.data.datasets?.[0] || {};
+            const bg = dataset.backgroundColor;
+            const bd = dataset.borderColor;
+            return labels.map((text, i) => ({
+              text,
+              fillStyle: Array.isArray(bg) ? bg[i] : bg,
+              strokeStyle: 'rgba(0,0,0,0)',
+              lineWidth: 0,
+              pointStyle: 'circle',
+              fontColor: '#ffffff',
+              datasetIndex: 0,
+            }));
           }
         }
       },
@@ -990,7 +1009,7 @@ const FinancialDashboardPage = () => {
                   <label className="chart-control-label">Visão:</label>
                   <select className="filter-select" value={pieMode} onChange={(e) => setPieMode(e.target.value)}>
                     <option value="totals">Totais (Receita x Despesa)</option>
-                    <option value="income-expense-categories">Receita / Categorias de Despesas</option>
+                    <option value="income-cat-subcat">Receita / Categoria / Subcategoria</option>
                   </select>
                 </div>
               </div>
