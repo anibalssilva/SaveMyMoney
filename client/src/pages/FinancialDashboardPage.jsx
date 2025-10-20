@@ -497,42 +497,37 @@ const FinancialDashboardPage = () => {
     }
 
     // Mode: Receita / Categoria / Subcategoria
-    if (pieMode === 'income-cat-subcat') {
+    if (pieMode === 'income-category') {
       const incomeTotal = filteredTransactions.filter(t => t.type === 'income')
         .reduce((s, t) => s + t.amount, 0);
 
-      // Build expense slices grouped by Category/Subcategory pair
-      const subTotals = new Map();
-      const labelMap = new Map();
-      filteredTransactions.filter(t => t.type === 'expense').forEach(t => {
-        const cat = t.category || 'Sem Categoria';
-        const subId = t.subcategoryId || t.subcategory || DEFAULT_SUBCATEGORY_VALUE;
-        const subName = t.subcategory || t.subcategoryId || DEFAULT_SUBCATEGORY_LABEL;
-        const key = `${cat}::${subId}`;
-        subTotals.set(key, (subTotals.get(key) || 0) + t.amount);
-        if (!labelMap.has(key)) {
-          labelMap.set(key, `${formatCap(cat)} / ${formatCap(subName)}`);
-        }
-      });
+      // Agrupar despesas por categoria
+      const categoryTotals = filteredTransactions.filter(t => t.type === 'expense')
+        .reduce((acc, t) => {
+          const cat = t.category || 'Sem Categoria';
+          acc[cat] = (acc[cat] || 0) + t.amount;
+          return acc;
+        }, {});
 
-      // Keep only the 5 largest expense offenders (category/subcategory pairs)
-      const sorted = Array.from(subTotals.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
-      const keys = sorted.map(([k]) => k);
-      const expenseLabels = keys.map(k => labelMap.get(k) || k);
+      // Top 5 categorias de despesa
+      const sorted = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      const catKeys = sorted.map(([c]) => c);
+      const expenseLabels = catKeys.map(c => formatCap(c));
       const expenseData = sorted.map(([, v]) => v);
 
       const labels = ['RECEITAS', ...expenseLabels];
       const data = [incomeTotal, ...expenseData];
 
       const blue = 'rgba(59, 130, 246,';
-      const { bgColors, borderColors } = colorsForKeys(keys);
-      const backgroundColor = [`${blue}0.85)`, ...bgColors];
-      const borderColor = [`${blue}1)`, ...borderColors];
+      const redBg = expenseLabels.map(() => 'rgba(239, 68, 68, 0.85)');
+      const redBd = expenseLabels.map(() => 'rgba(239, 68, 68, 1)');
+      const backgroundColor = [`${blue}0.85)`, ...redBg];
+      const borderColor = [`${blue}1)`, ...redBd];
 
       return {
         labels,
         datasets: [{
-          label: 'Receita / Categoria / Subcategoria',
+          label: 'Receita / Categoria',
           data,
           backgroundColor,
           borderColor,
