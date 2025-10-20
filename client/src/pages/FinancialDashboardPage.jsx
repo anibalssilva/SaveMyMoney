@@ -34,9 +34,7 @@ const FinancialDashboardPage = () => {
   const monthsRef = useRef(null);
   const yearsRef = useRef(null);
   // Pie chart controls
-  const [pieMode, setPieMode] = useState('totals'); // 'totals' | 'category'
-  const [pieType, setPieType] = useState('income'); // 'income' | 'expense'
-  const [pieCategory, setPieCategory] = useState('all');
+  const [pieMode, setPieMode] = useState('totals'); // 'totals' | 'income-subcategory'
   // Full month list (always 12) - uppercase display standard
   const MONTH_NAMES = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
 
@@ -241,13 +239,7 @@ const FinancialDashboardPage = () => {
     return Array.from(categories).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }, [typeAndPeriodFilteredTransactions]);
 
-  const incomeCategoriesForPie = useMemo(() => {
-    const categories = new Set();
-    typeAndPeriodFilteredTransactions.forEach(t => {
-      if (t.type === 'income' && t.category) categories.add(t.category);
-    });
-    return Array.from(categories).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  }, [typeAndPeriodFilteredTransactions]);
+  // not needed after simplifying pie controls; kept categories util in case of future use
 
   // Filter transactions based on selected filters
   const filteredTransactions = useMemo(() => {
@@ -504,64 +496,36 @@ const FinancialDashboardPage = () => {
       };
     }
 
-    // Mode: category/subcategory for selected type
-    const datasetTransactions = filteredTransactions.filter(t => t.type === pieType);
-    if (pieCategory === 'all') {
-      // Aggregate by category
-      const totals = datasetTransactions.reduce((acc, t) => {
-        const cat = t.category || 'Sem Categoria';
-        acc[cat] = (acc[cat] || 0) + t.amount;
-        return acc;
-      }, {});
-      const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 10);
-      const keys = sorted.map(([cat]) => cat);
-      const labels = keys.map(formatCap);
-      const data = sorted.map(([, total]) => total);
-      // Category view should use red tones per requisito
-      const red = 'rgba(239, 68, 68,';
-      const colors = labels.map((_, i) => `${red}0.85)`);
-      const borders = labels.map((_, i) => `${red}1)`);
+    // Mode: Receita/Subcategoria (income only)
+    if (pieMode === 'income-subcategory') {
+      const incomeTx = filteredTransactions.filter(t => t.type === 'income');
+      const subTotals = new Map();
+      const subLabels = new Map();
+      incomeTx.forEach(t => {
+        const id = t.subcategoryId || t.subcategory || DEFAULT_SUBCATEGORY_VALUE;
+        const name = t.subcategory || t.subcategoryId || DEFAULT_SUBCATEGORY_LABEL;
+        subTotals.set(id, (subTotals.get(id) || 0) + t.amount);
+        if (!subLabels.has(id)) subLabels.set(id, name);
+      });
+      const sorted = Array.from(subTotals.entries()).sort((a, b) => b[1] - a[1]).slice(0, 12);
+      const keys = sorted.map(([id]) => id);
+      const labels = keys.map(k => formatCap(subLabels.get(k) || k));
+      const data = sorted.map(([, val]) => val);
+      // Use distinct palette (stable) for subcategories
+      const { bgColors, borderColors } = colorsForKeys(keys);
       return {
         labels,
         datasets: [{
-          label: `${pieType === 'income' ? 'Receitas' : 'Despesas'} por Categoria`,
+          label: 'Receita / Subcategoria',
           data,
-          backgroundColor: colors,
-          borderColor: borders,
+          backgroundColor: bgColors,
+          borderColor: borderColors,
           borderWidth: 2,
           hoverOffset: 8,
         }]
       };
     }
-
-    // Drilldown: selected category -> subcategories
-    const subTotals = new Map();
-    const subLabels = new Map();
-    datasetTransactions.filter(t => t.category === pieCategory).forEach(t => {
-      const id = t.subcategoryId || t.subcategory || DEFAULT_SUBCATEGORY_VALUE;
-      const name = t.subcategory || t.subcategoryId || DEFAULT_SUBCATEGORY_LABEL;
-      subTotals.set(id, (subTotals.get(id) || 0) + t.amount);
-      if (!subLabels.has(id)) subLabels.set(id, name);
-    });
-    const sorted = Array.from(subTotals.entries()).sort((a, b) => b[1] - a[1]).slice(0, 12);
-    const keys = sorted.map(([id]) => id);
-    const labels = keys.map(k => formatCap(subLabels.get(k) || k));
-    const data = sorted.map(([, val]) => val);
-    const red = 'rgba(239, 68, 68,';
-    const colors = labels.map(() => `${red}0.85)`);
-    const borders = labels.map(() => `${red}1)`);
-    return {
-      labels,
-      datasets: [{
-        label: `Subcategorias de ${formatCap(pieCategory)}`,
-        data,
-        backgroundColor: colors,
-        borderColor: borders,
-        borderWidth: 2,
-        hoverOffset: 8,
-      }]
-    };
-  }, [filteredTransactions, pieMode, pieType, pieCategory]);
+  }, [filteredTransactions, pieMode]);
 
   // Chart options
   const barOptions = {
@@ -587,8 +551,8 @@ const FinancialDashboardPage = () => {
             return labels.map((text, i) => ({
               text,
               fillStyle: Array.isArray(bg) ? bg[i] : bg,
-              strokeStyle: Array.isArray(bd) ? bd[i] : bd,
-              lineWidth: 1,
+              strokeStyle: 'rgba(0,0,0,0)',
+              lineWidth: 0,
               pointStyle: 'circle',
               // Chart.js v3/v4 respeita fontColor por item quando presente
               fontColor: '#ffffff',
@@ -650,6 +614,10 @@ const FinancialDashboardPage = () => {
           pointStyle: 'circle',
           font: { size: 12, weight: 600 },
           padding: 15,
+          generateLabels: (chart) => {
+            const base = ChartJS.defaults.plugins.legend.labels.generateLabels(chart);
+            return base.map(item => ({ ...item, strokeStyle: 'rgba(0,0,0,0)', lineWidth: 0 }));
+          }
         }
       },
       tooltip: {
@@ -704,6 +672,10 @@ const FinancialDashboardPage = () => {
           padding: 12,
           boxWidth: 15,
           boxHeight: 15,
+          generateLabels: (chart) => {
+            const base = ChartJS.defaults.plugins.legend.labels.generateLabels(chart);
+            return base.map(item => ({ ...item, strokeStyle: 'rgba(0,0,0,0)', lineWidth: 0 }));
+          }
         }
       },
       tooltip: {
@@ -1010,29 +982,9 @@ const FinancialDashboardPage = () => {
                   <label className="chart-control-label">Visão:</label>
                   <select className="filter-select" value={pieMode} onChange={(e) => setPieMode(e.target.value)}>
                     <option value="totals">Totais (Receita x Despesa)</option>
-                    <option value="category">Por Categoria/Subcategoria</option>
+                    <option value="income-subcategory">Receita / Subcategoria</option>
                   </select>
                 </div>
-                {pieMode === 'category' && (
-                  <>
-                    <div className="filter-group">
-                      <label className="chart-control-label">Tipo:</label>
-                      <select className="filter-select" value={pieType} onChange={(e) => { setPieType(e.target.value); setPieCategory('all'); }}>
-                        <option value="income">Receitas</option>
-                        <option value="expense">Despesas</option>
-                      </select>
-                    </div>
-                    <div className="filter-group">
-                      <label className="chart-control-label">Categoria:</label>
-                      <select className="filter-select" value={pieCategory} onChange={(e) => setPieCategory(e.target.value)}>
-                        <option value="all">Todas</option>
-                        {(pieType === 'income' ? incomeCategoriesForPie : expenseCategories).map(cat => (
-                          <option key={cat} value={cat}>{formatCap(cat)}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </>
-                )}
               </div>
             </div>
             <div className="chart-wrapper" style={{ height: '400px' }}>
