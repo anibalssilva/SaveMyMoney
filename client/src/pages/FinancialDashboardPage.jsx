@@ -33,6 +33,10 @@ const FinancialDashboardPage = () => {
   const [openYears, setOpenYears] = useState(false);
   const monthsRef = useRef(null);
   const yearsRef = useRef(null);
+  // Pie chart controls
+  const [pieMode, setPieMode] = useState('totals'); // 'totals' | 'category'
+  const [pieType, setPieType] = useState('income'); // 'income' | 'expense'
+  const [pieCategory, setPieCategory] = useState('all');
   // Full month list (always 12) - uppercase display standard
   const MONTH_NAMES = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
 
@@ -233,6 +237,14 @@ const FinancialDashboardPage = () => {
       if (t.type === 'expense' && t.category) {
         categories.add(t.category);
       }
+    });
+    return Array.from(categories).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [typeAndPeriodFilteredTransactions]);
+
+  const incomeCategoriesForPie = useMemo(() => {
+    const categories = new Set();
+    typeAndPeriodFilteredTransactions.forEach(t => {
+      if (t.type === 'income' && t.category) categories.add(t.category);
     });
     return Array.from(categories).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }, [typeAndPeriodFilteredTransactions]);
@@ -467,43 +479,89 @@ const FinancialDashboardPage = () => {
 
   // Prepare data for Pie Chart (category distribution)
   const pieChartData = useMemo(() => {
-    const categoryTotals = {};
+    // Mode: totals (Receita x Despesa)
+    if (pieMode === 'totals') {
+      const income = filteredTransactions.filter(t => t.type === 'income')
+        .reduce((s, t) => s + t.amount, 0);
+      const expense = filteredTransactions.filter(t => t.type === 'expense')
+        .reduce((s, t) => s + t.amount, 0);
+      const labels = ['RECEITAS', 'DESPESAS'];
+      const data = [income, expense];
+      const colors = [
+        'rgba(59, 130, 246, 0.85)', // blue for income
+        'rgba(239, 68, 68, 0.85)', // red for expense
+      ];
+      return {
+        labels,
+        datasets: [{
+          label: 'Totais',
+          data,
+          backgroundColor: colors,
+          borderColor: colors.map(c => c.replace('0.85', '1')),
+          borderWidth: 2,
+          hoverOffset: 8,
+        }]
+      };
+    }
 
-    filteredTransactions.forEach(t => {
-      const category = t.category || 'Sem Categoria';
-      if (!categoryTotals[category]) {
-        categoryTotals[category] = 0;
-      }
-      categoryTotals[category] += t.amount;
+    // Mode: category/subcategory for selected type
+    const datasetTransactions = filteredTransactions.filter(t => t.type === pieType);
+    if (pieCategory === 'all') {
+      // Aggregate by category
+      const totals = datasetTransactions.reduce((acc, t) => {
+        const cat = t.category || 'Sem Categoria';
+        acc[cat] = (acc[cat] || 0) + t.amount;
+        return acc;
+      }, {});
+      const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      const keys = sorted.map(([cat]) => cat);
+      const labels = keys.map(formatCap);
+      const data = sorted.map(([, total]) => total);
+      // Category view should use red tones per requisito
+      const red = 'rgba(239, 68, 68,';
+      const colors = labels.map((_, i) => `${red}0.85)`);
+      const borders = labels.map((_, i) => `${red}1)`);
+      return {
+        labels,
+        datasets: [{
+          label: `${pieType === 'income' ? 'Receitas' : 'Despesas'} por Categoria`,
+          data,
+          backgroundColor: colors,
+          borderColor: borders,
+          borderWidth: 2,
+          hoverOffset: 8,
+        }]
+      };
+    }
+
+    // Drilldown: selected category -> subcategories
+    const subTotals = new Map();
+    const subLabels = new Map();
+    datasetTransactions.filter(t => t.category === pieCategory).forEach(t => {
+      const id = t.subcategoryId || t.subcategory || DEFAULT_SUBCATEGORY_VALUE;
+      const name = t.subcategory || t.subcategoryId || DEFAULT_SUBCATEGORY_LABEL;
+      subTotals.set(id, (subTotals.get(id) || 0) + t.amount);
+      if (!subLabels.has(id)) subLabels.set(id, name);
     });
-
-    const sortedCategories = Object.entries(categoryTotals)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8); // Top 8 for pie chart
-
-    const colors = [
-      'rgba(239, 68, 68, 0.8)',
-      'rgba(16, 185, 129, 0.8)',
-      'rgba(99, 102, 241, 0.8)',
-      'rgba(245, 158, 11, 0.8)',
-      'rgba(59, 130, 246, 0.8)',
-      'rgba(236, 72, 153, 0.8)',
-      'rgba(139, 92, 246, 0.8)',
-      'rgba(34, 197, 94, 0.8)',
-    ];
-
+    const sorted = Array.from(subTotals.entries()).sort((a, b) => b[1] - a[1]).slice(0, 12);
+    const keys = sorted.map(([id]) => id);
+    const labels = keys.map(k => formatCap(subLabels.get(k) || k));
+    const data = sorted.map(([, val]) => val);
+    const red = 'rgba(239, 68, 68,';
+    const colors = labels.map(() => `${red}0.85)`);
+    const borders = labels.map(() => `${red}1)`);
     return {
-      labels: sortedCategories.map(([category]) => formatCap(category)),
+      labels,
       datasets: [{
-        label: 'Total',
-        data: sortedCategories.map(([, total]) => total),
+        label: `Subcategorias de ${formatCap(pieCategory)}`,
+        data,
         backgroundColor: colors,
-        borderColor: colors.map(c => c.replace('0.8', '1')),
+        borderColor: borders,
         borderWidth: 2,
         hoverOffset: 8,
       }]
     };
-  }, [filteredTransactions]);
+  }, [filteredTransactions, pieMode, pieType, pieCategory]);
 
   // Chart options
   const barOptions = {
@@ -947,7 +1005,35 @@ const FinancialDashboardPage = () => {
           <div className="chart-card chart-card-half">
             <div className="chart-header">
               <h3>🥧 Gráfico de Pizza - Distribuição</h3>
-              <p className="chart-subtitle">Proporção por categoria (Top 8)</p>
+              <div className="chart-controls">
+                <div className="filter-group">
+                  <label className="chart-control-label">Visão:</label>
+                  <select className="filter-select" value={pieMode} onChange={(e) => setPieMode(e.target.value)}>
+                    <option value="totals">Totais (Receita x Despesa)</option>
+                    <option value="category">Por Categoria/Subcategoria</option>
+                  </select>
+                </div>
+                {pieMode === 'category' && (
+                  <>
+                    <div className="filter-group">
+                      <label className="chart-control-label">Tipo:</label>
+                      <select className="filter-select" value={pieType} onChange={(e) => { setPieType(e.target.value); setPieCategory('all'); }}>
+                        <option value="income">Receitas</option>
+                        <option value="expense">Despesas</option>
+                      </select>
+                    </div>
+                    <div className="filter-group">
+                      <label className="chart-control-label">Categoria:</label>
+                      <select className="filter-select" value={pieCategory} onChange={(e) => setPieCategory(e.target.value)}>
+                        <option value="all">Todas</option>
+                        {(pieType === 'income' ? incomeCategoriesForPie : expenseCategories).map(cat => (
+                          <option key={cat} value={cat}>{formatCap(cat)}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
             <div className="chart-wrapper" style={{ height: '400px' }}>
               <Pie data={pieChartData} options={pieOptions} />
