@@ -6,6 +6,15 @@ import './FinancialDashboardPage.css';
 
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);
+// Ensure global legend/text color defaults to white (safety against theme overrides)
+try {
+  ChartJS.defaults.color = '#ffffff';
+  if (ChartJS.defaults?.plugins?.legend?.labels) {
+    ChartJS.defaults.plugins.legend.labels.color = '#ffffff';
+  }
+} catch (e) {
+  // no-op: defensive guard if defaults shape changes
+}
 
 const FinancialDashboardPage = () => {
   const [transactions, setTransactions] = useState([]);
