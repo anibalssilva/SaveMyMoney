@@ -687,30 +687,12 @@ const FinancialDashboardPage = () => {
 
       {/* Statistics Cards */}
       <div className="stats-grid">
-        <div className="stat-card stat-card-income">
-          <div className="stat-icon">💰</div>
-          <div className="stat-content">
-            <div className="stat-label">Receitas</div>
-            <div className="stat-value">{currencyFormatter.format(stats.totalIncome)}</div>
-            <div className="stat-detail">{stats.incomeCount} transações</div>
-          </div>
-        </div>
-
         <div className="stat-card stat-card-expense">
           <div className="stat-icon">💸</div>
           <div className="stat-content">
             <div className="stat-label">Despesas</div>
             <div className="stat-value">{currencyFormatter.format(stats.totalExpenses)}</div>
             <div className="stat-detail">{stats.expenseCount} transações</div>
-          </div>
-        </div>
-
-        <div className={`stat-card stat-card-balance ${stats.balance >= 0 ? 'positive' : 'negative'}`}>
-          <div className="stat-icon">{stats.balance >= 0 ? '✅' : '⚠️'}</div>
-          <div className="stat-content">
-            <div className="stat-label">Saldo</div>
-            <div className="stat-value">{currencyFormatter.format(stats.balance)}</div>
-            <div className="stat-detail">{stats.balance >= 0 ? 'Positivo' : 'Negativo'}</div>
           </div>
         </div>
 
