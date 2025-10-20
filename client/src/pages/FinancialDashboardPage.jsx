@@ -204,6 +204,25 @@ const FinancialDashboardPage = () => {
     return { bgColors, borderColors };
   };
 
+  // Generate visually distinct non-blue colors for a given count
+  const distinctNonBluePalette = (count) => {
+    const candidateHues = [0, 20, 40, 50, 120, 140, 300, 320, 340, 15, 100, 280];
+    const hues = [];
+    for (let i = 0; i < count; i++) {
+      if (i < candidateHues.length) {
+        hues.push(candidateHues[i]);
+      } else {
+        // Spread remaining avoiding blue band (190-250)
+        let h = Math.round((i * 360 / count)) % 360;
+        if (h >= 190 && h <= 250) h = (h + 70) % 360; // jump out of blue band
+        hues.push(h);
+      }
+    }
+    const bgColors = hues.map(h => `hsla(${h}, 75%, 50%, 0.85)`);
+    const borderColors = hues.map(h => `hsla(${h}, 75%, 50%, 1)`);
+    return { bgColors, borderColors };
+  };
+
   const typeAndPeriodFilteredTransactions = useMemo(() => {
     return transactions.filter(t => {
       if (selectedType !== 'all' && t.type !== selectedType) return false;
@@ -549,7 +568,7 @@ const FinancialDashboardPage = () => {
 
       const blue = 'rgba(59, 130, 246,';
       // Cores variadas e estáveis para categorias, evitando tons de azul
-      const { bgColors, borderColors } = nonBlueColorsForKeys(catKeys);
+      const { bgColors, borderColors } = distinctNonBluePalette(catKeys.length);
       const backgroundColor = [`${blue}0.85)`, ...bgColors];
       const borderColor = [`${blue}1)`, ...borderColors];
 
