@@ -99,7 +99,7 @@ const FinancialDashboardPage = () => {
 
     const subcategoriesMap = new Map();
 
-    typeAndPeriodFilteredTransactions.forEach(t => {
+    transactions.forEach(t => {
       if (t.category === selectedCategory) {
         const value = t.subcategoryId || t.subcategory || DEFAULT_SUBCATEGORY_VALUE;
         const label = t.subcategory || t.subcategoryId || DEFAULT_SUBCATEGORY_LABEL;
@@ -112,7 +112,7 @@ const FinancialDashboardPage = () => {
     return Array.from(subcategoriesMap.entries())
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
-  }, [selectedCategory, typeAndPeriodFilteredTransactions]);
+  }, [selectedCategory, transactions]);
 
   // Get expense categories for the dropdown
   const expenseCategories = useMemo(() => {
