@@ -106,17 +106,57 @@ const FinancialDashboardPage = () => {
     []
   );
 
-  // Generate color palette for bar chart items
-  const getPalette = (count) => {
-    const bgColors = [];
-    const borderColors = [];
-    for (let i = 0; i < count; i++) {
-      const hue = Math.round((360 / Math.max(count, 1)) * i);
-      const bg = `hsla(${hue}, 70%, 50%, 0.85)`;
-      const bd = `hsla(${hue}, 70%, 50%, 1)`;
-      bgColors.push(bg);
-      borderColors.push(bd);
+  // Consistent color mapping
+  const CATEGORY_COLOR_MAP = {
+    moradia: '#3B82F6',
+    contas_fixas: '#8B5CF6',
+    supermercado: '#EF4444',
+    transporte: '#F59E0B',
+    saude: '#10B981',
+    pessoais: '#EC4899',
+    educacao: '#6366F1',
+    filhos: '#F472B6',
+    financeiras: '#14B8A6',
+    lazer: '#22C55E',
+    pets: '#F97316',
+    outras: '#64748B',
+  };
+
+  const hexToRgba = (hex, alpha = 1) => {
+    const h = hex.replace('#','');
+    const bigint = parseInt(h, 16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
+
+  const stringHash = (str) => {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) {
+      h = (h << 5) - h + str.charCodeAt(i);
+      h |= 0;
     }
+    return Math.abs(h);
+  };
+
+  const stableBaseColor = (key) => {
+    const k = String(key || '').toLowerCase();
+    if (CATEGORY_COLOR_MAP[k]) return CATEGORY_COLOR_MAP[k];
+    // Fallback deterministic HSL by hash
+    const hue = stringHash(k) % 360;
+    return `hsl(${hue}, 70%, 50%)`;
+  };
+
+  const colorsForKeys = (keys) => {
+    const bgColors = keys.map(k => {
+      const base = stableBaseColor(k);
+      return base.startsWith('hsl(') ? base.replace('hsl(', 'hsla(').replace(')', ', 0.85)') : hexToRgba(base, 0.85);
+    });
+    const borderColors = keys.map(k => {
+      const base = stableBaseColor(k);
+      return base.startsWith('hsl(') ? base.replace('hsl(', 'hsla(').replace(')', ', 1)') : hexToRgba(base, 1);
+    });
     return { bgColors, borderColors };
   };
 
@@ -243,7 +283,7 @@ const FinancialDashboardPage = () => {
 
       const labels = sorted.map(([name]) => name);
       const data = sorted.map(([, amount]) => amount);
-      const { bgColors, borderColors } = getPalette(labels.length);
+      const { bgColors, borderColors } = colorsForKeys(labels);
       return {
         labels,
         datasets: [{
@@ -270,7 +310,7 @@ const FinancialDashboardPage = () => {
 
       const labels = sorted.map(([name]) => name);
       const data = sorted.map(([, amount]) => amount);
-      const { bgColors, borderColors } = getPalette(labels.length);
+      const { bgColors, borderColors } = colorsForKeys(labels);
       return {
         labels,
         datasets: [{
@@ -301,9 +341,10 @@ const FinancialDashboardPage = () => {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10);
 
-    const labels = sorted.map(([value]) => subcategoryLabels.get(value) || value);
+    const values = sorted.map(([value]) => value);
+    const labels = values.map((value) => subcategoryLabels.get(value) || value);
     const data = sorted.map(([, amount]) => amount);
-    const { bgColors, borderColors } = getPalette(labels.length);
+    const { bgColors, borderColors } = colorsForKeys(values.map(v => `${selectedBarCategory}:${v}`));
     return {
       labels,
       datasets: [{
