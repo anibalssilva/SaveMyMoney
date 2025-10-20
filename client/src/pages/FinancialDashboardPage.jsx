@@ -498,7 +498,7 @@ const FinancialDashboardPage = () => {
         position: 'top',
         labels: {
           // Legenda com pointStyle e texto branco
-          color: '#ffffff',
+          color: '#000000ff',
           usePointStyle: true,
           pointStyle: 'circle',
           font: { size: 12, weight: 600 },
