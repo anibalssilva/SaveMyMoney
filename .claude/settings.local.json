@@ -19,7 +19,8 @@
       "Bash(tesseract+parser)",
       "Bash(hybrid\",\n    \"confidence\": \"high)",
       "Bash(medium)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(Faltante\" and edited items both have access to subcategory selection\n\nChanges:\n- Added <select> element in edit mode with subcategories mapped as options\n- Added .item-edit-subcategory CSS class with flex: 1.5, min-width: 150px, \n  and z-index: 20\n- Added placeholders to description and amount inputs for better UX\n- Applied position: relative + z-index to all subcategory elements\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []

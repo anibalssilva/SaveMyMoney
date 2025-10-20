@@ -14,6 +14,7 @@ const FinancialDashboardPage = () => {
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [selectedYear, setSelectedYear] = useState('all');
   const [groupBy, setGroupBy] = useState('category'); // category, month, day
+  const [selectedBarCategory, setSelectedBarCategory] = useState('all');
 
   useEffect(() => {
     fetchTransactions();
@@ -49,6 +50,17 @@ const FinancialDashboardPage = () => {
       years.add(date.getFullYear());
     });
     return Array.from(years).sort();
+  }, [transactions]);
+
+  // Get expense categories for the dropdown
+  const expenseCategories = useMemo(() => {
+    const categories = new Set();
+    transactions.forEach(t => {
+      if (t.type === 'expense' && t.category) {
+        categories.add(t.category);
+      }
+    });
+    return Array.from(categories).sort();
   }, [transactions]);
 
   // Filter transactions based on selected filters
@@ -92,47 +104,60 @@ const FinancialDashboardPage = () => {
     };
   }, [filteredTransactions]);
 
-  // Prepare data for Bar Chart (by category)
+  // Prepare data for Bar Chart (by category or subcategory)
   const barChartData = useMemo(() => {
-    const categoryTotals = {};
+    const expenses = filteredTransactions.filter(t => t.type === 'expense');
 
-    filteredTransactions.forEach(t => {
-      const category = t.category || 'Sem Categoria';
-      if (!categoryTotals[category]) {
-        categoryTotals[category] = 0;
-      }
-      categoryTotals[category] += t.amount;
-    });
+    if (selectedBarCategory === 'all') {
+      // Show top 10 categories
+      const categoryTotals = {};
+      expenses.forEach(t => {
+        const cat = t.category || 'Sem Categoria';
+        categoryTotals[cat] = (categoryTotals[cat] || 0) + t.amount;
+      });
 
-    const sortedCategories = Object.entries(categoryTotals)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10); // Top 10 categories
+      const sorted = Object.entries(categoryTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
 
-    return {
-      labels: sortedCategories.map(([category]) => category),
-      datasets: [{
-        label: selectedType === 'expense' ? 'Despesas' : selectedType === 'income' ? 'Receitas' : 'Transações',
-        data: sortedCategories.map(([, total]) => total),
-        backgroundColor: selectedType === 'expense'
-          ? 'rgba(239, 68, 68, 0.8)'
-          : selectedType === 'income'
-          ? 'rgba(16, 185, 129, 0.8)'
-          : 'rgba(99, 102, 241, 0.8)',
-        borderColor: selectedType === 'expense'
-          ? 'rgba(239, 68, 68, 1)'
-          : selectedType === 'income'
-          ? 'rgba(16, 185, 129, 1)'
-          : 'rgba(99, 102, 241, 1)',
-        borderWidth: 2,
-        borderRadius: 8,
-        hoverBackgroundColor: selectedType === 'expense'
-          ? 'rgba(239, 68, 68, 1)'
-          : selectedType === 'income'
-          ? 'rgba(16, 185, 129, 1)'
-          : 'rgba(99, 102, 241, 1)',
-      }]
-    };
-  }, [filteredTransactions, selectedType]);
+      return {
+        labels: sorted.map(([name]) => name),
+        datasets: [{
+          label: 'Despesas por Categoria',
+          data: sorted.map(([, amount]) => amount),
+          backgroundColor: 'rgba(239, 68, 68, 0.8)',
+          borderColor: 'rgba(239, 68, 68, 1)',
+          borderWidth: 2,
+          borderRadius: 8,
+        }]
+      };
+    } else {
+      // Show subcategories for selected category
+      const filtered = expenses.filter(t => t.category === selectedBarCategory);
+      const subcategoryTotals = {};
+
+      filtered.forEach(t => {
+        const subcat = t.subcategoryId || 'outros'; // Note: subcategoryId might not exist on all transactions
+        subcategoryTotals[subcat] = (subcategoryTotals[subcat] || 0) + t.amount;
+      });
+
+      const sorted = Object.entries(subcategoryTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+
+      return {
+        labels: sorted.map(([name]) => name),
+        datasets: [{
+          label: `Gastos por Subcategoria - ${selectedBarCategory}`,
+          data: sorted.map(([, amount]) => amount),
+          backgroundColor: 'rgba(239, 68, 68, 0.8)',
+          borderColor: 'rgba(239, 68, 68, 1)',
+          borderWidth: 2,
+          borderRadius: 8,
+        }]
+      };
+    }
+  }, [filteredTransactions, selectedBarCategory]);
 
   // Prepare data for Line Chart (over time)
   const lineChartData = useMemo(() => {
@@ -516,9 +541,28 @@ const FinancialDashboardPage = () => {
           {/* Bar Chart */}
           <div className="chart-card chart-card-full">
             <div className="chart-header">
-              <h3>📊 Gráfico de Barras - Por Categoria</h3>
-              <p className="chart-subtitle">Top 10 categorias com maiores valores</p>
+              <h3>📊 Gráfico de Barras - Despesas</h3>
+              <div className="chart-controls">
+                <label className="chart-control-label">Analisar Categoria:</label>
+                <select
+                  value={selectedBarCategory}
+                  onChange={(e) => setSelectedBarCategory(e.target.value)}
+                  className="filter-select"
+                  disabled={selectedType === 'income'}
+                >
+                  <option value="all">Todas as Categorias</option>
+                  {expenseCategories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
             </div>
+            <p className="chart-subtitle">
+              {selectedBarCategory === 'all'
+                ? 'Top 10 categorias com maiores despesas'
+                : `Top 10 subcategorias de ${selectedBarCategory}`
+              }
+            </p>
             <div className="chart-wrapper" style={{ height: '350px' }}>
               <Bar data={barChartData} options={barOptions} />
             </div>

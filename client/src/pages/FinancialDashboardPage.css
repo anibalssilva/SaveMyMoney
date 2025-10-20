@@ -327,13 +327,18 @@
   margin-bottom: var(--space-lg);
   padding-bottom: var(--space-md);
   border-bottom: 2px solid var(--cyber-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
 }
 
 .chart-header h3 {
   color: white;
   font-size: 1.3rem;
   font-weight: 700;
-  margin-bottom: var(--space-xs);
+  margin-bottom: 0;
   display: flex;
   align-items: center;
   gap: var(--space-sm);
@@ -343,6 +348,20 @@
   color: rgba(255, 255, 255, 0.6);
   font-size: 0.9rem;
   font-weight: 400;
+  width: 100%; /* Ensure subtitle takes full width */
+}
+
+/* Chart Controls (for drill-down) */
+.chart-controls {
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+}
+
+.chart-control-label {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
 }
 
 /* Chart Wrapper */
