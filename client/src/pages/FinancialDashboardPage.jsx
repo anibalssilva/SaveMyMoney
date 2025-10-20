@@ -497,7 +497,8 @@ const FinancialDashboardPage = () => {
         display: true,
         position: 'top',
         labels: {
-          color: 'rgba(255, 255, 255, 0.8)',
+          // Match the same font color pattern used across the app
+          color: 'rgba(255, 255, 255, 0.9)',
           font: { size: 12, weight: 600 },
           padding: 15,
           // Generate legend per bar instead of per dataset
@@ -564,7 +565,7 @@ const FinancialDashboardPage = () => {
         display: true,
         position: 'top',
         labels: {
-          color: 'rgba(255, 255, 255, 0.8)',
+          color: 'rgba(255, 255, 255, 0.9)',
           font: { size: 12, weight: 600 },
           padding: 15,
         }
@@ -614,7 +615,7 @@ const FinancialDashboardPage = () => {
         display: true,
         position: 'right',
         labels: {
-          color: 'rgba(255, 255, 255, 0.8)',
+          color: 'rgba(255, 255, 255, 0.9)',
           font: { size: 12, weight: 600 },
           padding: 12,
           boxWidth: 15,
