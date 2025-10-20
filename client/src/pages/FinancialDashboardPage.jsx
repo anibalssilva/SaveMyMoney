@@ -24,7 +24,9 @@ const FinancialDashboardPage = () => {
   const [openYears, setOpenYears] = useState(false);
   const monthsRef = useRef(null);
   const yearsRef = useRef(null);
-  
+  // Full month list (always 12)
+  const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
   // Helpers to toggle month/year selections
   const toggleMonth = (monthNumber) => {
     setSelectedMonths(prev => {
@@ -43,6 +45,10 @@ const FinancialDashboardPage = () => {
       return [...prev, yearNumber];
     });
   };
+
+  // Close dropdown if selecting the "Todos" option
+  const clearMonths = () => { setSelectedMonths([]); setOpenMonths(false); };
+  const clearYears = () => { setSelectedYears([]); setOpenYears(false); };
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -83,10 +89,6 @@ const FinancialDashboardPage = () => {
       setLoading(false);
     }
   };
-
-  // Full month list (always 12)
-  const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-
   const availableYears = useMemo(() => {
     const years = new Set();
     transactions.forEach(t => {
@@ -671,7 +673,7 @@ const FinancialDashboardPage = () => {
                   <input
                     type="checkbox"
                     checked={selectedMonths.length === 0}
-                    onChange={() => setSelectedMonths([])}
+                    onChange={clearMonths}
                   />
                   Todos os Meses
                 </label>
@@ -711,7 +713,7 @@ const FinancialDashboardPage = () => {
                   <input
                     type="checkbox"
                     checked={selectedYears.length === 0}
-                    onChange={() => setSelectedYears([])}
+                    onChange={clearYears}
                   />
                   Todos os Anos
                 </label>
