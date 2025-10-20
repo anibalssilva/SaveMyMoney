@@ -958,3 +958,106 @@
     grid-column: span 1;
   }
 }
+
+/* ===== HEADER WITH EYE BUTTON ===== */
+
+.dashboard-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.dashboard-header-text {
+  flex: 1;
+  text-align: center;
+}
+
+.toggle-values-btn-header {
+  background: rgba(0, 240, 255, 0.1);
+  border: 2px solid var(--cyber-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  cursor: pointer;
+  font-size: 2rem;
+  transition: all var(--transition-base);
+  color: var(--cyber-primary);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.toggle-values-btn-header:hover {
+  background: rgba(0, 240, 255, 0.2);
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+}
+
+/* ===== FINANCIAL HEALTH CARD ===== */
+
+.stat-card-health {
+  grid-column: span 1;
+}
+
+.stat-health-message {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+/* Health Card Colors */
+.stat-card-health-red {
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.stat-card-health-red .stat-health-message {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.stat-card-health-red:hover {
+  box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);
+}
+
+.stat-card-health-blue {
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+.stat-card-health-blue .stat-health-message {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.stat-card-health-blue:hover {
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+}
+
+.stat-card-health-orange {
+  border-color: rgba(251, 191, 36, 0.5);
+}
+
+.stat-card-health-orange .stat-health-message {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.stat-card-health-orange:hover {
+  box-shadow: 0 10px 30px rgba(251, 191, 36, 0.3);
+}
+
+/* Responsive adjustments for header */
+@media (max-width: 768px) {
+  .dashboard-header-content {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toggle-values-btn-header {
+    align-self: center;
+  }
+}

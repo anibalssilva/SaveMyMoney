@@ -88,6 +88,30 @@ const DashboardPage = () => {
     const totalIncome = incomes.reduce((sum, t) => sum + t.amount, 0);
     const balance = totalIncome - totalExpenses;
 
+    // Calculate financial health
+    let financialHealth = {
+      status: 'balanced',
+      message: 'Equilibrado',
+      color: 'orange',
+      icon: '⚖️'
+    };
+
+    if (totalExpenses > totalIncome) {
+      financialHealth = {
+        status: 'danger',
+        message: 'Atenção! Despesas maiores que receitas',
+        color: 'red',
+        icon: '⚠️'
+      };
+    } else if (totalIncome > totalExpenses) {
+      financialHealth = {
+        status: 'healthy',
+        message: 'Excelente! Receitas maiores que despesas',
+        color: 'blue',
+        icon: '✅'
+      };
+    }
+
     // Calculate top category
     const categoryTotals = {};
     expenses.forEach(t => {
@@ -118,6 +142,7 @@ const DashboardPage = () => {
       incomeCount: incomes.length,
       topCategory,
       categoryPercentages,
+      financialHealth,
     };
   }, [filteredTransactions]);
 
@@ -153,10 +178,21 @@ const DashboardPage = () => {
 
       {/* Header */}
       <div className="dashboard-header">
-        <h1 className="dashboard-title">💎 Dashboard Financeiro</h1>
-        <p className="dashboard-subtitle">
-          Análise visual completa das suas finanças
-        </p>
+        <div className="dashboard-header-content">
+          <div className="dashboard-header-text">
+            <h1 className="dashboard-title">💎 Dashboard Financeiro</h1>
+            <p className="dashboard-subtitle">
+              Análise visual completa das suas finanças
+            </p>
+          </div>
+          <button
+            className="toggle-values-btn-header"
+            onClick={() => setValuesVisible(!valuesVisible)}
+            title={valuesVisible ? 'Ocultar valores' : 'Mostrar valores'}
+          >
+            {valuesVisible ? '👁️' : '👁️‍🗨️'}
+          </button>
+        </div>
       </div>
 
       {/* Filters - First */}
@@ -219,13 +255,6 @@ const DashboardPage = () => {
         <div className="stat-card stat-card-income">
           <div className="stat-header">
             <div className="stat-icon">💰</div>
-            <button
-              className="toggle-values-btn"
-              onClick={() => setValuesVisible(!valuesVisible)}
-              title={valuesVisible ? 'Ocultar valores' : 'Mostrar valores'}
-            >
-              {valuesVisible ? '👁️' : '👁️‍🗨️'}
-            </button>
           </div>
           <div className="stat-content">
             <div className="stat-label">RECEITAS</div>
@@ -284,6 +313,17 @@ const DashboardPage = () => {
             <div className="stat-value">
               {valuesVisible ? `R$ ${stats.topCategory.amount.toFixed(2)}` : '••••••'}
             </div>
+          </div>
+        </div>
+
+        {/* Financial Health Card */}
+        <div className={`stat-card stat-card-health stat-card-health-${stats.financialHealth.color}`}>
+          <div className="stat-header">
+            <div className="stat-icon">{stats.financialHealth.icon}</div>
+          </div>
+          <div className="stat-content">
+            <div className="stat-label">SAÚDE FINANCEIRA</div>
+            <div className="stat-health-message">{stats.financialHealth.message}</div>
           </div>
         </div>
 
