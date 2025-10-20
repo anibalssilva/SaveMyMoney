@@ -10,7 +10,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarEleme
 const FinancialDashboardPage = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedType, setSelectedType] = useState('expense'); // expense, income, all
+  const [selectedType, setSelectedType] = useState('all'); // expense, income, all
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [selectedYear, setSelectedYear] = useState('all');
   const [selectedBarCategory, setSelectedBarCategory] = useState('all');
@@ -606,7 +606,7 @@ const FinancialDashboardPage = () => {
   }, [availableYears, selectedYear]);
 
   const clearFilters = () => {
-    setSelectedType('expense');
+    setSelectedType('all');
     setSelectedMonth('all');
     setSelectedYear('all');
     setSelectedCategory('all');
@@ -687,7 +687,7 @@ const FinancialDashboardPage = () => {
           </div>
         </div>
 
-        {(selectedType !== 'expense' || selectedMonth !== 'all' || selectedYear !== 'all' || selectedCategory !== 'all') && (
+        {(selectedType !== 'all' || selectedMonth !== 'all' || selectedYear !== 'all' || selectedCategory !== 'all') && (
           <button className="clear-filters-btn" onClick={clearFilters}>
             ✖ Limpar Filtros
           </button>
