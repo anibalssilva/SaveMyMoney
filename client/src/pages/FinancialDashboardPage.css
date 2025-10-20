@@ -462,6 +462,11 @@
   gap: var(--space-md);
 }
 
+/* Force legend text color when Chart.js renders legend as HTML in some environments */
+.chart-card .legend, .chart-card ul.legend, .chart-card .chartjs-legend, .chart-card .chartjs-legend li, .chart-card .chartjs-legend span {
+  color: #ffffff !important;
+}
+
 .chart-header h3 {
   color: white;
   font-size: 1.3rem;

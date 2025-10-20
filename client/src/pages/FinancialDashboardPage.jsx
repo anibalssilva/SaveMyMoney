@@ -524,6 +524,8 @@ const FinancialDashboardPage = () => {
               strokeStyle: Array.isArray(bd) ? bd[i] : bd,
               lineWidth: 1,
               pointStyle: 'circle',
+              // Chart.js v3/v4 respeita fontColor por item quando presente
+              fontColor: '#ffffff',
               // index is required but we disable click behavior below
               datasetIndex: 0,
             }));
