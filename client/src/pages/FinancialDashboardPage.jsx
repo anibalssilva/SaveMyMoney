@@ -163,11 +163,17 @@ const FinancialDashboardPage = () => {
     if (selectedSubcategory === 'all') {
       return filteredTransactions;
     }
+    // Accept match either by ID or by label (for dados antigos)
+    const selectedLabel = (() => {
+      const fromApi = apiSubcategories.find(s => (s.id || s.value) === selectedSubcategory);
+      return fromApi ? (fromApi.name || fromApi.label) : undefined;
+    })();
+
     return filteredTransactions.filter(t => {
-      const subcategoryValue = t.subcategoryId || t.subcategory || DEFAULT_SUBCATEGORY_VALUE;
-      return subcategoryValue === selectedSubcategory;
+      const value = t.subcategoryId || t.subcategory || DEFAULT_SUBCATEGORY_VALUE;
+      return value === selectedSubcategory || (selectedLabel && value === selectedLabel);
     });
-  }, [filteredTransactions, selectedSubcategory]);
+  }, [filteredTransactions, selectedSubcategory, apiSubcategories]);
 
   // Prepare data for Bar Chart (by category or subcategory)
   const barFocusType = selectedType === 'income' ? 'income' : 'expense';
