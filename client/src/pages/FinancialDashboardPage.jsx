@@ -584,7 +584,7 @@ const FinancialDashboardPage = () => {
         }]
       };
     }
-  }, [filteredTransactions, pieMode]);
+  }, [filteredTransactions, pieMode, pieTopN]);
 
   // Chart options
   const barOptions = {
