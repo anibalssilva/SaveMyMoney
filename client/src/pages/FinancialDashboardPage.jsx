@@ -34,7 +34,8 @@ const FinancialDashboardPage = () => {
   const monthsRef = useRef(null);
   const yearsRef = useRef(null);
   // Pie chart controls
-  const [pieMode, setPieMode] = useState('totals'); // 'totals' | 'income-cat-subcat'
+  const [pieMode, setPieMode] = useState('totals'); // 'totals' | 'income-category'
+  const [pieTopN, setPieTopN] = useState(5); // quantidade para Receita/Categoria
   // Full month list (always 12) - uppercase display standard
   const MONTH_NAMES = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
 
@@ -509,8 +510,10 @@ const FinancialDashboardPage = () => {
           return acc;
         }, {});
 
-      // Top 5 categorias de despesa
-      const sorted = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      // Top N categorias de despesa (configurável)
+      const sorted = Object.entries(categoryTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, Math.max(1, pieTopN));
       const catKeys = sorted.map(([c]) => c);
       const expenseLabels = catKeys.map(c => formatCap(c));
       const expenseData = sorted.map(([, v]) => v);
@@ -519,10 +522,10 @@ const FinancialDashboardPage = () => {
       const data = [incomeTotal, ...expenseData];
 
       const blue = 'rgba(59, 130, 246,';
-      const redBg = expenseLabels.map(() => 'rgba(239, 68, 68, 0.85)');
-      const redBd = expenseLabels.map(() => 'rgba(239, 68, 68, 1)');
-      const backgroundColor = [`${blue}0.85)`, ...redBg];
-      const borderColor = [`${blue}1)`, ...redBd];
+      // Cores variadas e estáveis para cada categoria
+      const { bgColors, borderColors } = colorsForKeys(catKeys);
+      const backgroundColor = [`${blue}0.85)`, ...bgColors];
+      const borderColor = [`${blue}1)`, ...borderColors];
 
       return {
         labels,
