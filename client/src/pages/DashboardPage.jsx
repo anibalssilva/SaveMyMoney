@@ -42,7 +42,7 @@ const DashboardPage = () => {
       const date = new Date(t.date);
       years.add(date.getFullYear());
     });
-    return Array.from(years).sort().reverse();
+    return Array.from(years).sort((a,b) => a - b);
   }, [transactions]);
 
   // Get unique months from transactions

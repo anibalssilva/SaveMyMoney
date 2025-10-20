@@ -105,7 +105,7 @@ const TransactionsPage = ({ setAlert }) => {
   const availableYears = useMemo(() => {
     const years = new Set();
     transactions.forEach(t => years.add(new Date(t.date).getFullYear()));
-    return Array.from(years).sort((a,b) => b - a);
+    return Array.from(years).sort((a,b) => a - b);
   }, [transactions]);
 
   const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];

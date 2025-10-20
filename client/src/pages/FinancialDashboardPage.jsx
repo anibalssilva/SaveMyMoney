@@ -104,7 +104,7 @@ const FinancialDashboardPage = () => {
       const date = new Date(t.date);
       years.add(date.getFullYear());
     });
-    return Array.from(years).sort((a, b) => b - a);
+    return Array.from(years).sort((a, b) => a - b);
   }, [transactions]);
 
   const DEFAULT_SUBCATEGORY_VALUE = 'outros';
