@@ -302,6 +302,35 @@ router.get('/subcategories/:categoryId', auth, (req, res) => {
   }
 });
 
+// @route   POST api/transactions/backfill-subcategories
+// @desc    Backfill missing subcategoryId/subcategory for user's expense transactions using detector
+// @access  Private
+router.post('/backfill-subcategories', auth, async (req, res) => {
+  try {
+    const query = { user: req.user.id, type: 'expense' };
+    const all = await Transaction.find(query).lean();
+    let updated = 0;
+
+    for (const t of all) {
+      if (!t.subcategoryId && t.category) {
+        const sub = detectSubcategory(t.description || '', t.category);
+        await Transaction.findByIdAndUpdate(t._id, {
+          $set: {
+            subcategoryId: sub?.id || 'outros',
+            subcategory: sub?.name || 'Outros'
+          }
+        });
+        updated++;
+      }
+    }
+
+    res.json({ success: true, updated });
+  } catch (err) {
+    console.error('❌ Error backfilling subcategories:', err.message);
+    res.status(500).json({ msg: 'Erro ao backfill de subcategorias' });
+  }
+});
+
 // @route   POST api/transactions/ocr
 // @desc    Extract data from receipt image (does NOT save to database)
 // @access  Private
