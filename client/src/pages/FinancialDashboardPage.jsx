@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { Bar, Line, Pie } from 'react-chartjs-2';
 import { getTransactions, getSubcategoriesByCategory } from '../services/api';
@@ -22,8 +22,8 @@ const FinancialDashboardPage = () => {
   // Dropdown open states
   const [openMonths, setOpenMonths] = useState(false);
   const [openYears, setOpenYears] = useState(false);
-  const monthsRef = React.useRef(null);
-  const yearsRef = React.useRef(null);
+  const monthsRef = useRef(null);
+  const yearsRef = useRef(null);
   
   // Helpers to toggle month/year selections
   const toggleMonth = (monthNumber) => {
