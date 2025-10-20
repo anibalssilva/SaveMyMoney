@@ -95,12 +95,15 @@ const FinancialDashboardPage = () => {
   }, [typeAndPeriodFilteredTransactions]);
 
   const availableSubcategories = useMemo(() => {
-    if (selectedCategory === 'all') return [];
+    // Subcategorias devem ser listadas com base na categoria
+    // escolhida em "Analisar Categoria" do gráfico de barras.
+    if (selectedBarCategory === 'all') return [];
 
     const subcategoriesMap = new Map();
 
-    transactions.forEach(t => {
-      if (t.category === selectedCategory) {
+    // Respeitar também os filtros de tipo/período já aplicados
+    typeAndPeriodFilteredTransactions.forEach(t => {
+      if (t.category === selectedBarCategory) {
         const value = t.subcategoryId || t.subcategory || DEFAULT_SUBCATEGORY_VALUE;
         const label = t.subcategory || t.subcategoryId || DEFAULT_SUBCATEGORY_LABEL;
         if (!subcategoriesMap.has(value)) {
@@ -112,7 +115,7 @@ const FinancialDashboardPage = () => {
     return Array.from(subcategoriesMap.entries())
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
-  }, [selectedCategory, transactions]);
+  }, [selectedBarCategory, typeAndPeriodFilteredTransactions]);
 
   // Get expense categories for the dropdown
   const expenseCategories = useMemo(() => {
@@ -502,8 +505,9 @@ const FinancialDashboardPage = () => {
   }, [selectedType]);
 
   useEffect(() => {
+    // Ao trocar a categoria analisada no gráfico, resetar subcategoria
     setSelectedSubcategory('all');
-  }, [selectedCategory]);
+  }, [selectedBarCategory]);
 
   useEffect(() => {
     if (selectedType === 'income') {
@@ -715,7 +719,7 @@ const FinancialDashboardPage = () => {
                     className="filter-select"
                     value={selectedSubcategory}
                     onChange={(e) => setSelectedSubcategory(e.target.value)}
-                    disabled={selectedCategory === 'all' || availableSubcategories.length === 0}
+                    disabled={selectedBarCategory === 'all' || availableSubcategories.length === 0}
                   >
                     <option value="all">Todas as Subcategorias</option>
                     {availableSubcategories.map(subcategory => (
