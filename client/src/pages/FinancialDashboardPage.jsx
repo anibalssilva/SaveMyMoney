@@ -178,6 +178,32 @@ const FinancialDashboardPage = () => {
     return { bgColors, borderColors };
   };
 
+  // Non-blue palette for pie categories (avoid similarity with income blue)
+  const NON_BLUE_PALETTE = [
+    '#ef4444', // red
+    '#f59e0b', // amber
+    '#10b981', // emerald
+    '#8b5cf6', // violet
+    '#ec4899', // pink
+    '#84cc16', // lime
+    '#eab308', // yellow
+    '#f97316', // orange
+    '#14b8a6', // teal
+    '#22c55e', // green
+    '#a855f7', // purple
+  ];
+
+  const nonBlueColorsForKeys = (keys) => {
+    const pick = (key, alpha = 0.85) => {
+      const idx = stringHash(String(key)) % NON_BLUE_PALETTE.length;
+      const hex = NON_BLUE_PALETTE[idx];
+      return hexToRgba(hex, alpha);
+    };
+    const bgColors = keys.map(k => pick(k, 0.85));
+    const borderColors = keys.map(k => pick(k, 1));
+    return { bgColors, borderColors };
+  };
+
   const typeAndPeriodFilteredTransactions = useMemo(() => {
     return transactions.filter(t => {
       if (selectedType !== 'all' && t.type !== selectedType) return false;
@@ -522,8 +548,8 @@ const FinancialDashboardPage = () => {
       const data = [incomeTotal, ...expenseData];
 
       const blue = 'rgba(59, 130, 246,';
-      // Cores variadas e estáveis para cada categoria
-      const { bgColors, borderColors } = colorsForKeys(catKeys);
+      // Cores variadas e estáveis para categorias, evitando tons de azul
+      const { bgColors, borderColors } = nonBlueColorsForKeys(catKeys);
       const backgroundColor = [`${blue}0.85)`, ...bgColors];
       const borderColor = [`${blue}1)`, ...borderColors];
 
@@ -1011,6 +1037,17 @@ const FinancialDashboardPage = () => {
                     <option value="income-category">Receita / Categoria</option>
                   </select>
                 </div>
+                {pieMode === 'income-category' && (
+                  <div className="filter-group">
+                    <label className="chart-control-label">Top N:</label>
+                    <select className="filter-select" value={pieTopN} onChange={(e) => setPieTopN(parseInt(e.target.value, 10))}>
+                      <option value={3}>3</option>
+                      <option value={5}>5</option>
+                      <option value={8}>8</option>
+                      <option value={10}>10</option>
+                    </select>
+                  </div>
+                )}
               </div>
             </div>
             <div className="chart-wrapper" style={{ height: '400px' }}>
