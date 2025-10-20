@@ -40,6 +40,8 @@ export const getTransactions = () => api.get('/transactions');
 export const createTransaction = (transactionData) => api.post('/transactions', transactionData);
 export const updateTransaction = (id, transactionData) => api.put(`/transactions/${id}`, transactionData);
 export const deleteTransaction = (id) => api.delete(`/transactions/${id}`);
+// Subcategories by parent category (server provides full list regardless de uso)
+export const getSubcategoriesByCategory = (categoryId) => api.get(`/transactions/subcategories/${categoryId}`);
 export const uploadReceipt = (formData) => api.post('/transactions/ocr', formData, {
   headers: {
     'Content-Type': 'multipart/form-data',

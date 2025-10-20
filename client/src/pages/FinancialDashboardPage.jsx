@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { Bar, Line, Pie } from 'react-chartjs-2';
-import { getTransactions } from '../services/api';
+import { getTransactions, getSubcategoriesByCategory } from '../services/api';
 import './FinancialDashboardPage.css';
 
 // Register Chart.js components
@@ -16,6 +16,7 @@ const FinancialDashboardPage = () => {
   const [selectedBarCategory, setSelectedBarCategory] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSubcategory, setSelectedSubcategory] = useState('all');
+  const [apiSubcategories, setApiSubcategories] = useState([]); // opções vindas do servidor
 
   useEffect(() => {
     fetchTransactions();
@@ -95,13 +96,17 @@ const FinancialDashboardPage = () => {
   }, [typeAndPeriodFilteredTransactions]);
 
   const availableSubcategories = useMemo(() => {
-    // Subcategorias devem ser listadas com base na categoria
-    // escolhida em "Analisar Categoria" do gráfico de barras.
+    // Preferir lista completa do servidor (todas as subcategorias do pai)
     if (selectedBarCategory === 'all') return [];
 
-    const subcategoriesMap = new Map();
+    if (apiSubcategories && apiSubcategories.length > 0) {
+      return apiSubcategories
+        .map(s => ({ value: s.id || s.value, label: s.name || s.label }))
+        .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+    }
 
-    // Respeitar também os filtros de tipo/período já aplicados
+    // Fallback: derivar de transações filtradas caso API falhe
+    const subcategoriesMap = new Map();
     typeAndPeriodFilteredTransactions.forEach(t => {
       if (t.category === selectedBarCategory) {
         const value = t.subcategoryId || t.subcategory || DEFAULT_SUBCATEGORY_VALUE;
@@ -115,7 +120,7 @@ const FinancialDashboardPage = () => {
     return Array.from(subcategoriesMap.entries())
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
-  }, [selectedBarCategory, typeAndPeriodFilteredTransactions]);
+  }, [selectedBarCategory, apiSubcategories, typeAndPeriodFilteredTransactions]);
 
   // Get expense categories for the dropdown
   const expenseCategories = useMemo(() => {
@@ -508,6 +513,28 @@ const FinancialDashboardPage = () => {
     // Ao trocar a categoria analisada no gráfico, resetar subcategoria
     setSelectedSubcategory('all');
   }, [selectedBarCategory]);
+
+  // Carregar subcategorias completas do servidor quando a categoria do gráfico muda
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        if (selectedBarCategory !== 'all' && barFocusType === 'expense') {
+          const { data } = await getSubcategoriesByCategory(selectedBarCategory);
+          if (!cancelled) {
+            setApiSubcategories(Array.isArray(data) ? data : []);
+          }
+        } else {
+          setApiSubcategories([]);
+        }
+      } catch (error) {
+        console.error('Erro ao buscar subcategorias:', error?.message || error);
+        if (!cancelled) setApiSubcategories([]);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [selectedBarCategory, barFocusType]);
 
   useEffect(() => {
     if (selectedType === 'income') {
