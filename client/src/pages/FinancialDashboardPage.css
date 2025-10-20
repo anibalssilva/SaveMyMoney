@@ -191,14 +191,14 @@
   overflow-y: auto;
 }
 
-/* Collapsed to one row (approx) */
+/* Collapsed to ~2 rows */
 .multi-options.is-collapsed {
-  max-height: 38px; /* ~1 linha */
+  max-height: 80px; /* ~2 linhas */
 }
 
-/* Expanded to ~3 rows */
+/* Expanded to ~4 rows */
 .multi-options.is-expanded {
-  max-height: 120px; /* ~3 linhas, com rolagem */
+  max-height: 180px; /* ~4 linhas, com rolagem */
 }
 
 .multi-options::-webkit-scrollbar {
