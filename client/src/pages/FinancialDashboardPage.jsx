@@ -13,8 +13,9 @@ const FinancialDashboardPage = () => {
   const [selectedType, setSelectedType] = useState('expense'); // expense, income, all
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [selectedYear, setSelectedYear] = useState('all');
-  const [groupBy, setGroupBy] = useState('category'); // category, month, day
   const [selectedBarCategory, setSelectedBarCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedSubcategory, setSelectedSubcategory] = useState('all');
 
   useEffect(() => {
     fetchTransactions();
@@ -37,11 +38,15 @@ const FinancialDashboardPage = () => {
     const months = new Set();
     transactions.forEach(t => {
       const date = new Date(t.date);
+      const year = date.getFullYear();
+      if (selectedYear !== 'all' && year !== parseInt(selectedYear)) {
+        return;
+      }
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       months.add(monthKey);
     });
-    return Array.from(months).sort();
-  }, [transactions]);
+    return Array.from(months).sort((a, b) => b.localeCompare(a));
+  }, [transactions, selectedYear]);
 
   const availableYears = useMemo(() => {
     const years = new Set();
@@ -49,34 +54,27 @@ const FinancialDashboardPage = () => {
       const date = new Date(t.date);
       years.add(date.getFullYear());
     });
-    return Array.from(years).sort();
+    return Array.from(years).sort((a, b) => b - a);
   }, [transactions]);
 
-  // Get expense categories for the dropdown
-  const expenseCategories = useMemo(() => {
-    const categories = new Set();
-    transactions.forEach(t => {
-      if (t.type === 'expense' && t.category) {
-        categories.add(t.category);
-      }
-    });
-    return Array.from(categories).sort();
-  }, [transactions]);
+  const DEFAULT_SUBCATEGORY_VALUE = 'outros';
+  const DEFAULT_SUBCATEGORY_LABEL = 'Outros';
 
-  // Filter transactions based on selected filters
-  const filteredTransactions = useMemo(() => {
+  const currencyFormatter = useMemo(
+    () => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }),
+    []
+  );
+
+  const typeAndPeriodFilteredTransactions = useMemo(() => {
     return transactions.filter(t => {
-      // Type filter
       if (selectedType !== 'all' && t.type !== selectedType) return false;
 
-      // Month filter
       if (selectedMonth !== 'all') {
         const tDate = new Date(t.date);
         const tMonthKey = `${tDate.getFullYear()}-${String(tDate.getMonth() + 1).padStart(2, '0')}`;
         if (tMonthKey !== selectedMonth) return false;
       }
 
-      // Year filter
       if (selectedYear !== 'all') {
         const tDate = new Date(t.date);
         if (tDate.getFullYear() !== parseInt(selectedYear)) return false;
@@ -86,7 +84,61 @@ const FinancialDashboardPage = () => {
     });
   }, [transactions, selectedType, selectedMonth, selectedYear]);
 
-  // Calculate statistics
+  const availableCategories = useMemo(() => {
+    const categories = new Set();
+    typeAndPeriodFilteredTransactions.forEach(t => {
+      if (t.category) {
+        categories.add(t.category);
+      }
+    });
+    return Array.from(categories).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [typeAndPeriodFilteredTransactions]);
+
+  const availableSubcategories = useMemo(() => {
+    if (selectedCategory === 'all') return [];
+
+    const subcategoriesMap = new Map();
+
+    typeAndPeriodFilteredTransactions.forEach(t => {
+      if (t.category === selectedCategory) {
+        const value = t.subcategoryId || t.subcategory || DEFAULT_SUBCATEGORY_VALUE;
+        const label = t.subcategory || t.subcategoryId || DEFAULT_SUBCATEGORY_LABEL;
+        if (!subcategoriesMap.has(value)) {
+          subcategoriesMap.set(value, label);
+        }
+      }
+    });
+
+    return Array.from(subcategoriesMap.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+  }, [selectedCategory, typeAndPeriodFilteredTransactions]);
+
+  // Get expense categories for the dropdown
+  const expenseCategories = useMemo(() => {
+    const categories = new Set();
+    typeAndPeriodFilteredTransactions.forEach(t => {
+      if (t.type === 'expense' && t.category) {
+        categories.add(t.category);
+      }
+    });
+    return Array.from(categories).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [typeAndPeriodFilteredTransactions]);
+
+  // Filter transactions based on selected filters
+  const filteredTransactions = useMemo(() => {
+    return typeAndPeriodFilteredTransactions.filter(t => {
+      if (selectedCategory !== 'all' && t.category !== selectedCategory) return false;
+
+      if (selectedSubcategory !== 'all') {
+        const subcategoryValue = t.subcategoryId || t.subcategory || DEFAULT_SUBCATEGORY_VALUE;
+        if (subcategoryValue !== selectedSubcategory) return false;
+      }
+
+      return true;
+    });
+  }, [typeAndPeriodFilteredTransactions, selectedCategory, selectedSubcategory]);
+
   const stats = useMemo(() => {
     const expenses = filteredTransactions.filter(t => t.type === 'expense');
     const incomes = filteredTransactions.filter(t => t.type === 'income');
@@ -105,16 +157,41 @@ const FinancialDashboardPage = () => {
   }, [filteredTransactions]);
 
   // Prepare data for Bar Chart (by category or subcategory)
+  const barFocusType = selectedType === 'income' ? 'income' : 'expense';
+
   const barChartData = useMemo(() => {
-    const expenses = filteredTransactions.filter(t => t.type === 'expense');
+    const datasetTransactions = filteredTransactions.filter(t => t.type === barFocusType);
+
+    if (barFocusType === 'income') {
+      const categoryTotals = datasetTransactions.reduce((acc, t) => {
+        const category = t.category || 'Sem Categoria';
+        acc[category] = (acc[category] || 0) + t.amount;
+        return acc;
+      }, {});
+
+      const sorted = Object.entries(categoryTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+
+      return {
+        labels: sorted.map(([name]) => name),
+        datasets: [{
+          label: 'Receitas por Categoria',
+          data: sorted.map(([, amount]) => amount),
+          backgroundColor: 'rgba(16, 185, 129, 0.8)',
+          borderColor: 'rgba(16, 185, 129, 1)',
+          borderWidth: 2,
+          borderRadius: 8,
+        }]
+      };
+    }
 
     if (selectedBarCategory === 'all') {
-      // Show top 10 categories
-      const categoryTotals = {};
-      expenses.forEach(t => {
-        const cat = t.category || 'Sem Categoria';
-        categoryTotals[cat] = (categoryTotals[cat] || 0) + t.amount;
-      });
+      const categoryTotals = datasetTransactions.reduce((acc, t) => {
+        const category = t.category || 'Sem Categoria';
+        acc[category] = (acc[category] || 0) + t.amount;
+        return acc;
+      }, {});
 
       const sorted = Object.entries(categoryTotals)
         .sort((a, b) => b[1] - a[1])
@@ -131,33 +208,37 @@ const FinancialDashboardPage = () => {
           borderRadius: 8,
         }]
       };
-    } else {
-      // Show subcategories for selected category
-      const filtered = expenses.filter(t => t.category === selectedBarCategory);
-      const subcategoryTotals = {};
-
-      filtered.forEach(t => {
-        const subcat = t.subcategoryId || 'outros'; // Note: subcategoryId might not exist on all transactions
-        subcategoryTotals[subcat] = (subcategoryTotals[subcat] || 0) + t.amount;
-      });
-
-      const sorted = Object.entries(subcategoryTotals)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10);
-
-      return {
-        labels: sorted.map(([name]) => name),
-        datasets: [{
-          label: `Gastos por Subcategoria - ${selectedBarCategory}`,
-          data: sorted.map(([, amount]) => amount),
-          backgroundColor: 'rgba(239, 68, 68, 0.8)',
-          borderColor: 'rgba(239, 68, 68, 1)',
-          borderWidth: 2,
-          borderRadius: 8,
-        }]
-      };
     }
-  }, [filteredTransactions, selectedBarCategory]);
+
+    const filtered = datasetTransactions.filter(t => t.category === selectedBarCategory);
+    const subcategoryTotals = new Map();
+    const subcategoryLabels = new Map();
+
+    filtered.forEach(t => {
+      const value = t.subcategoryId || t.subcategory || DEFAULT_SUBCATEGORY_VALUE;
+      const label = t.subcategory || t.subcategoryId || DEFAULT_SUBCATEGORY_LABEL;
+      subcategoryTotals.set(value, (subcategoryTotals.get(value) || 0) + t.amount);
+      if (!subcategoryLabels.has(value)) {
+        subcategoryLabels.set(value, label);
+      }
+    });
+
+    const sorted = Array.from(subcategoryTotals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+
+    return {
+      labels: sorted.map(([value]) => subcategoryLabels.get(value) || value),
+      datasets: [{
+        label: `Gastos por Subcategoria - ${selectedBarCategory}`,
+        data: sorted.map(([, amount]) => amount),
+        backgroundColor: 'rgba(239, 68, 68, 0.8)',
+        borderColor: 'rgba(239, 68, 68, 1)',
+        borderWidth: 2,
+        borderRadius: 8,
+      }]
+    };
+  }, [filteredTransactions, selectedBarCategory, barFocusType]);
 
   // Prepare data for Line Chart (over time)
   const lineChartData = useMemo(() => {
@@ -294,7 +375,7 @@ const FinancialDashboardPage = () => {
         padding: 12,
         displayColors: true,
         callbacks: {
-          label: (context) => `${context.dataset.label}: R$ ${context.parsed.y.toFixed(2)}`
+          label: (context) => `${context.dataset.label}: ${currencyFormatter.format(context.parsed.y)}`
         }
       }
     },
@@ -303,7 +384,7 @@ const FinancialDashboardPage = () => {
         beginAtZero: true,
         ticks: {
           color: 'rgba(255, 255, 255, 0.7)',
-          callback: (value) => `R$ ${value.toFixed(0)}`
+          callback: (value) => currencyFormatter.format(Number(value))
         },
         grid: {
           color: 'rgba(255, 255, 255, 0.1)',
@@ -344,7 +425,7 @@ const FinancialDashboardPage = () => {
         padding: 12,
         displayColors: true,
         callbacks: {
-          label: (context) => `${context.dataset.label}: R$ ${context.parsed.y.toFixed(2)}`
+          label: (context) => `${context.dataset.label}: ${currencyFormatter.format(context.parsed.y)}`
         }
       }
     },
@@ -353,7 +434,7 @@ const FinancialDashboardPage = () => {
         beginAtZero: true,
         ticks: {
           color: 'rgba(255, 255, 255, 0.7)',
-          callback: (value) => `R$ ${value.toFixed(0)}`
+          callback: (value) => currencyFormatter.format(Number(value))
         },
         grid: {
           color: 'rgba(255, 255, 255, 0.1)',
@@ -398,7 +479,7 @@ const FinancialDashboardPage = () => {
           label: (context) => {
             const total = context.dataset.data.reduce((a, b) => a + b, 0);
             const percentage = ((context.parsed / total) * 100).toFixed(1);
-            return `${context.label}: R$ ${context.parsed.toFixed(2)} (${percentage}%)`;
+            return `${context.label}: ${currencyFormatter.format(context.parsed)} (${percentage}%)`;
           }
         }
       }
@@ -410,10 +491,61 @@ const FinancialDashboardPage = () => {
     return months[month - 1];
   };
 
+  useEffect(() => {
+    setSelectedCategory('all');
+    setSelectedSubcategory('all');
+  }, [selectedType]);
+
+  useEffect(() => {
+    setSelectedSubcategory('all');
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    if (selectedType === 'income') {
+      setSelectedBarCategory('all');
+    }
+  }, [selectedType]);
+
+  useEffect(() => {
+    if (selectedCategory !== 'all' && !availableCategories.includes(selectedCategory)) {
+      setSelectedCategory('all');
+    }
+  }, [availableCategories, selectedCategory]);
+
+  useEffect(() => {
+    if (
+      selectedSubcategory !== 'all' &&
+      !availableSubcategories.some(subcategory => subcategory.value === selectedSubcategory)
+    ) {
+      setSelectedSubcategory('all');
+    }
+  }, [availableSubcategories, selectedSubcategory]);
+
+  useEffect(() => {
+    if (selectedBarCategory !== 'all' && !expenseCategories.includes(selectedBarCategory)) {
+      setSelectedBarCategory('all');
+    }
+  }, [expenseCategories, selectedBarCategory]);
+
+  useEffect(() => {
+    if (selectedMonth !== 'all' && !availableMonths.includes(selectedMonth)) {
+      setSelectedMonth('all');
+    }
+  }, [availableMonths, selectedMonth]);
+
+  useEffect(() => {
+    if (selectedYear !== 'all' && !availableYears.includes(parseInt(selectedYear, 10))) {
+      setSelectedYear('all');
+    }
+  }, [availableYears, selectedYear]);
+
   const clearFilters = () => {
     setSelectedType('expense');
     setSelectedMonth('all');
     setSelectedYear('all');
+    setSelectedCategory('all');
+    setSelectedSubcategory('all');
+    setSelectedBarCategory('all');
   };
 
   if (loading) {
@@ -487,9 +619,39 @@ const FinancialDashboardPage = () => {
               ))}
             </select>
           </div>
+
+          <div className="filter-group">
+            <label className="filter-label">Categoria</label>
+            <select
+              className="filter-select"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              disabled={availableCategories.length === 0}
+            >
+              <option value="all">Todas as Categorias</option>
+              {availableCategories.map(category => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label className="filter-label">Subcategoria</label>
+            <select
+              className="filter-select"
+              value={selectedSubcategory}
+              onChange={(e) => setSelectedSubcategory(e.target.value)}
+              disabled={selectedCategory === 'all' || availableSubcategories.length === 0}
+            >
+              <option value="all">Todas as Subcategorias</option>
+              {availableSubcategories.map(subcategory => (
+                <option key={subcategory.value} value={subcategory.value}>{subcategory.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {(selectedType !== 'expense' || selectedMonth !== 'all' || selectedYear !== 'all') && (
+        {(selectedType !== 'expense' || selectedMonth !== 'all' || selectedYear !== 'all' || selectedCategory !== 'all' || selectedSubcategory !== 'all') && (
           <button className="clear-filters-btn" onClick={clearFilters}>
             ✖ Limpar Filtros
           </button>
@@ -502,7 +664,7 @@ const FinancialDashboardPage = () => {
           <div className="stat-icon">💰</div>
           <div className="stat-content">
             <div className="stat-label">Receitas</div>
-            <div className="stat-value">R$ {stats.totalIncome.toFixed(2)}</div>
+            <div className="stat-value">{currencyFormatter.format(stats.totalIncome)}</div>
             <div className="stat-detail">{stats.incomeCount} transações</div>
           </div>
         </div>
@@ -511,7 +673,7 @@ const FinancialDashboardPage = () => {
           <div className="stat-icon">💸</div>
           <div className="stat-content">
             <div className="stat-label">Despesas</div>
-            <div className="stat-value">R$ {stats.totalExpenses.toFixed(2)}</div>
+            <div className="stat-value">{currencyFormatter.format(stats.totalExpenses)}</div>
             <div className="stat-detail">{stats.expenseCount} transações</div>
           </div>
         </div>
@@ -520,7 +682,7 @@ const FinancialDashboardPage = () => {
           <div className="stat-icon">{stats.balance >= 0 ? '✅' : '⚠️'}</div>
           <div className="stat-content">
             <div className="stat-label">Saldo</div>
-            <div className="stat-value">R$ {stats.balance.toFixed(2)}</div>
+            <div className="stat-value">{currencyFormatter.format(stats.balance)}</div>
             <div className="stat-detail">{stats.balance >= 0 ? 'Positivo' : 'Negativo'}</div>
           </div>
         </div>
@@ -529,7 +691,7 @@ const FinancialDashboardPage = () => {
           <div className="stat-icon">📊</div>
           <div className="stat-content">
             <div className="stat-label">Total</div>
-            <div className="stat-value">{filteredTransactions.length}</div>
+            <div className="stat-value">{filteredTransactions.length.toLocaleString('pt-BR')}</div>
             <div className="stat-detail">transações filtradas</div>
           </div>
         </div>
@@ -541,14 +703,14 @@ const FinancialDashboardPage = () => {
           {/* Bar Chart */}
           <div className="chart-card chart-card-full">
             <div className="chart-header">
-              <h3>📊 Gráfico de Barras - Despesas</h3>
+              <h3>📊 Gráfico de Barras - {barFocusType === 'income' ? 'Receitas' : 'Despesas'}</h3>
               <div className="chart-controls">
                 <label className="chart-control-label">Analisar Categoria:</label>
                 <select
                   value={selectedBarCategory}
                   onChange={(e) => setSelectedBarCategory(e.target.value)}
                   className="filter-select"
-                  disabled={selectedType === 'income'}
+                  disabled={barFocusType === 'income'}
                 >
                   <option value="all">Todas as Categorias</option>
                   {expenseCategories.map(cat => (
@@ -558,7 +720,9 @@ const FinancialDashboardPage = () => {
               </div>
             </div>
             <p className="chart-subtitle">
-              {selectedBarCategory === 'all'
+              {barFocusType === 'income'
+                ? 'Top 10 categorias com maiores receitas'
+                : selectedBarCategory === 'all'
                 ? 'Top 10 categorias com maiores despesas'
                 : `Top 10 subcategorias de ${selectedBarCategory}`
               }
