@@ -32,6 +32,8 @@ const TransactionsPage = ({ setAlert }) => {
   const [filterType, setFilterType] = useState('all'); // all, expense, income
   const [filterCategory, setFilterCategory] = useState('all');
   const [sortBy, setSortBy] = useState('date-desc'); // date-desc, date-asc, amount-desc, amount-asc
+  const [filterMonth, setFilterMonth] = useState('all'); // 1..12 or 'all'
+  const [filterYear, setFilterYear] = useState('all'); // yyyy or 'all'
 
   useEffect(() => {
     loadTransactions();
@@ -95,6 +97,15 @@ const TransactionsPage = ({ setAlert }) => {
     return Array.from(cats).sort();
   }, [transactions]);
 
+  // Years available in data
+  const availableYears = useMemo(() => {
+    const years = new Set();
+    transactions.forEach(t => years.add(new Date(t.date).getFullYear()));
+    return Array.from(years).sort((a,b) => b - a);
+  }, [transactions]);
+
+  const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
   // Filter and sort transactions
   const filteredTransactions = useMemo(() => {
     let filtered = [...transactions];
@@ -117,6 +128,16 @@ const TransactionsPage = ({ setAlert }) => {
       filtered = filtered.filter(t => t.category === filterCategory);
     }
 
+    // Year filter
+    if (filterYear !== 'all') {
+      filtered = filtered.filter(t => (new Date(t.date).getFullYear()) === parseInt(filterYear, 10));
+    }
+
+    // Month filter (if set, applies across selected year or across all years if year = all)
+    if (filterMonth !== 'all') {
+      filtered = filtered.filter(t => (new Date(t.date).getMonth() + 1) === parseInt(filterMonth, 10));
+    }
+
     // Sorting
     filtered.sort((a, b) => {
       switch (sortBy) {
@@ -134,7 +155,7 @@ const TransactionsPage = ({ setAlert }) => {
     });
 
     return filtered;
-  }, [transactions, searchTerm, filterType, filterCategory, sortBy]);
+  }, [transactions, searchTerm, filterType, filterCategory, filterMonth, filterYear, sortBy]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -319,6 +340,8 @@ const TransactionsPage = ({ setAlert }) => {
     setSearchTerm('');
     setFilterType('all');
     setFilterCategory('all');
+    setFilterMonth('all');
+    setFilterYear('all');
     setSortBy('date-desc');
   };
 
@@ -599,6 +622,34 @@ const TransactionsPage = ({ setAlert }) => {
               <option value="all">Todas</option>
               {categories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label>🗓️ Mês</label>
+            <select
+              className="filter-select"
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(e.target.value)}
+            >
+              <option value="all">Todos os Meses</option>
+              {MONTH_NAMES.map((name, idx) => (
+                <option key={idx+1} value={idx+1}>{name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label>📅 Ano</label>
+            <select
+              className="filter-select"
+              value={filterYear}
+              onChange={(e) => setFilterYear(e.target.value)}
+            >
+              <option value="all">Todos os Anos</option>
+              {availableYears.map(y => (
+                <option key={y} value={y}>{y}</option>
               ))}
             </select>
           </div>
