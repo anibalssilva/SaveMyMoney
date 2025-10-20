@@ -56,10 +56,20 @@ const TransactionsPage = ({ setAlert }) => {
   const loadSubcategories = async (categoryId) => {
     try {
       const response = await api.get(`/transactions/subcategories/${categoryId}`);
-      setSubcategories(response.data);
+      const list = Array.isArray(response.data) ? response.data : [];
+      setSubcategories(list);
+
+      // Se nenhuma subcategoria estiver definida no formulário, usar uma padrão
+      setFormData(prev => {
+        if (prev.subcategoryId) return prev;
+        const defaultSub = list.find(s => s.id === 'outros') || list[0];
+        return { ...prev, subcategoryId: defaultSub ? defaultSub.id : '' };
+      });
     } catch (error) {
       console.error('Error loading subcategories:', error);
-      setSubcategories([{ id: 'outros', name: 'Outros', emoji: '💡' }]);
+      const fallback = [{ id: 'outros', name: 'Outros', emoji: '💡' }];
+      setSubcategories(fallback);
+      setFormData(prev => ({ ...prev, subcategoryId: 'outros' }));
     }
   };
 
