@@ -33,9 +33,11 @@ const TransactionsPage = ({ setAlert }) => {
   const [filterCategory, setFilterCategory] = useState('all');
   const [sortBy, setSortBy] = useState('date-desc'); // date-desc, date-asc, amount-desc, amount-asc
   const [selectedMonths, setSelectedMonths] = useState([]); // [] => todos os meses
-  const [filterYear, setFilterYear] = useState('all'); // yyyy or 'all'
+  const [selectedYears, setSelectedYears] = useState([]);   // [] => todos os anos
   const [openMonths, setOpenMonths] = useState(false);
+  const [openYears, setOpenYears] = useState(false);
   const monthsRef = useRef(null);
+  const yearsRef = useRef(null);
 
   useEffect(() => {
     loadTransactions();
@@ -117,6 +119,13 @@ const TransactionsPage = ({ setAlert }) => {
   };
 
   const clearMonths = () => { setSelectedMonths([]); setOpenMonths(false); };
+  const toggleYear = (yearNumber) => {
+    setSelectedYears(prev => prev.includes(yearNumber)
+      ? prev.filter(y => y !== yearNumber)
+      : [...prev, yearNumber]
+    );
+  };
+  const clearYears = () => { setSelectedYears([]); setOpenYears(false); };
 
   const selectedMonthsLabel = useMemo(() => {
     if (selectedMonths.length === 0) return 'Todos os Meses';
@@ -125,9 +134,17 @@ const TransactionsPage = ({ setAlert }) => {
     return `${selectedMonths.length} meses selecionados`;
   }, [selectedMonths]);
 
+  const selectedYearsLabel = useMemo(() => {
+    if (selectedYears.length === 0) return 'Todos os Anos';
+    if (selectedYears.length === 1) return String(selectedYears[0]);
+    if (selectedYears.length === 2) return `${selectedYears[0]}, ${selectedYears[1]}`;
+    return `${selectedYears.length} anos selecionados`;
+  }, [selectedYears]);
+
   useEffect(() => {
     const handler = (e) => {
       if (monthsRef.current && !monthsRef.current.contains(e.target)) setOpenMonths(false);
+      if (yearsRef.current && !yearsRef.current.contains(e.target)) setOpenYears(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -155,9 +172,9 @@ const TransactionsPage = ({ setAlert }) => {
       filtered = filtered.filter(t => t.category === filterCategory);
     }
 
-    // Year filter
-    if (filterYear !== 'all') {
-      filtered = filtered.filter(t => (new Date(t.date).getFullYear()) === parseInt(filterYear, 10));
+    // Year filter (multi)
+    if (selectedYears.length > 0) {
+      filtered = filtered.filter(t => selectedYears.includes(new Date(t.date).getFullYear()));
     }
 
     // Month filter (multi)
@@ -182,7 +199,7 @@ const TransactionsPage = ({ setAlert }) => {
     });
 
     return filtered;
-  }, [transactions, searchTerm, filterType, filterCategory, selectedMonths, filterYear, sortBy]);
+  }, [transactions, searchTerm, filterType, filterCategory, selectedMonths, selectedYears, sortBy]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -368,7 +385,7 @@ const TransactionsPage = ({ setAlert }) => {
     setFilterType('all');
     setFilterCategory('all');
     setSelectedMonths([]);
-    setFilterYear('all');
+    setSelectedYears([]);
     setSortBy('date-desc');
   };
 
@@ -607,7 +624,7 @@ const TransactionsPage = ({ setAlert }) => {
       <div className="filters-card">
         <div className="filters-header">
           <h3>🔍 Filtros e Busca</h3>
-          {(searchTerm || filterType !== 'all' || filterCategory !== 'all' || sortBy !== 'date-desc') && (
+          {(searchTerm || filterType !== 'all' || filterCategory !== 'all' || selectedMonths.length > 0 || selectedYears.length > 0 || sortBy !== 'date-desc') && (
             <button className="btn-clear-filters" onClick={clearFilters}>
               ✖ Limpar Filtros
             </button>
@@ -685,18 +702,35 @@ const TransactionsPage = ({ setAlert }) => {
             )}
           </div>
 
-          <div className="filter-group">
+          <div className="filter-group" ref={yearsRef}>
             <label>📅 Ano</label>
-            <select
-              className="filter-select"
-              value={filterYear}
-              onChange={(e) => setFilterYear(e.target.value)}
+            <button
+              type="button"
+              className="multi-dd-toggle"
+              onClick={() => setOpenYears(v => !v)}
             >
-              <option value="all">Todos os Anos</option>
-              {availableYears.map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
+              <span>{selectedYearsLabel}</span>
+              <span className="caret">▾</span>
+            </button>
+            {openYears && (
+              <div className="multi-dd-panel">
+                <label className={`multi-option ${selectedYears.length === 0 ? 'active' : ''}`}>
+                  <input type="checkbox" checked={selectedYears.length === 0} onChange={clearYears} />
+                  Todos os Anos
+                </label>
+                <div className="multi-options is-expanded">
+                  {availableYears.map((y) => {
+                    const checked = selectedYears.includes(y);
+                    return (
+                      <label key={y} className={`multi-option ${checked ? 'active' : ''}`}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleYear(y)} />
+                        {y}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="filter-group">
