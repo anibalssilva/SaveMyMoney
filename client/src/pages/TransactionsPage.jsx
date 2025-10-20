@@ -189,8 +189,8 @@ const TransactionsPage = ({ setAlert }) => {
           duration: 3000
         });
       } else {
-        // Handle recurring transactions
-        if (formData.isRecurring && formData.type === 'income' && formData.recurrenceCount > 1) {
+        // Handle recurring transactions (income or expense)
+        if (formData.isRecurring && formData.recurrenceCount > 1) {
           // Create multiple transactions (one for each month)
           const baseDate = new Date(formData.date);
           const transactionsToCreate = [];
@@ -503,8 +503,8 @@ const TransactionsPage = ({ setAlert }) => {
               </div>
             )}
 
-            {/* Recurrence section - only show for income */}
-            {formData.type === 'income' && !editingId && (
+            {/* Recurrence section (both types) */}
+            {!editingId && (
               <div className="form-row recurrence-section">
                 <div className="form-group recurrence-checkbox-group">
                   <label className="checkbox-label">
@@ -514,10 +514,10 @@ const TransactionsPage = ({ setAlert }) => {
                       checked={formData.isRecurring}
                       onChange={onChange}
                     />
-                    <span className="checkbox-text">🔄 Receita recorrente</span>
+                    <span className="checkbox-text">🔄 {formData.type === 'income' ? 'Receita' : 'Despesa'} recorrente</span>
                   </label>
                   <p className="help-text">
-                    Marque se esta receita se repete todos os meses
+                    Marque se esta {formData.type === 'income' ? 'receita' : 'despesa'} se repete todos os meses
                   </p>
                 </div>
 
@@ -534,7 +534,7 @@ const TransactionsPage = ({ setAlert }) => {
                       placeholder="Ex: 12 (para 12 meses)"
                     />
                     <p className="help-text">
-                      Número de meses que esta receita vai se repetir (máximo 12)
+                      Número de meses que esta {formData.type === 'income' ? 'receita' : 'despesa'} vai se repetir (máximo 12)
                     </p>
                   </div>
                 )}
