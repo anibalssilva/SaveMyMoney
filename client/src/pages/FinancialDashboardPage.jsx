@@ -655,19 +655,6 @@ const FinancialDashboardPage = () => {
         </div>
 
         <div className="filters-grid">
-          <div className="filter-group">
-            <label className="filter-label">Tipo</label>
-            <select
-              className="filter-select"
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-            >
-              <option value="all">Todos</option>
-              <option value="expense">Despesas</option>
-              <option value="income">Receitas</option>
-            </select>
-          </div>
-
           <div className="filter-group" ref={monthsRef}>
             <label className="filter-label">Mês</label>
             <button
@@ -748,7 +735,7 @@ const FinancialDashboardPage = () => {
           </div>
         </div>
 
-        {(selectedType !== 'all' || selectedMonths.length > 0 || selectedYears.length > 0 || selectedCategory !== 'all') && (
+        {(selectedMonths.length > 0 || selectedYears.length > 0 || selectedCategory !== 'all') && (
           <button className="clear-filters-btn" onClick={clearFilters}>
             ✖ Limpar Filtros
           </button>
