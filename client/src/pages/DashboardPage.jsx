@@ -11,7 +11,7 @@ const DashboardPage = () => {
 
   // Filtros
   const [selectedType, setSelectedType] = useState('all'); // all, expense, income
-  const [selectedMonth, setSelectedMonth] = useState('all'); // all, 2025-01, etc
+  const [selectedMonth, setSelectedMonth] = useState('all'); // 'all' or 1..12
   const [selectedYear, setSelectedYear] = useState('all');
 
   useEffect(() => {
@@ -50,16 +50,8 @@ const DashboardPage = () => {
     return Array.from(years).sort((a,b) => a - b);
   }, [transactions]);
 
-  // Get unique months from transactions
-  const availableMonths = useMemo(() => {
-    const months = new Set();
-    transactions.forEach(t => {
-      const date = new Date(t.date);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      months.add(monthKey);
-    });
-    return Array.from(months).sort().reverse();
-  }, [transactions]);
+  // Fixed list of 12 months (JANEIRO..DEZEMBRO)
+  const availableMonths = useMemo(() => Array.from({ length: 12 }, (_, i) => i + 1), []);
 
   // Filter transactions
   const filteredTransactions = useMemo(() => {
@@ -67,11 +59,10 @@ const DashboardPage = () => {
       // Type filter
       if (selectedType !== 'all' && t.type !== selectedType) return false;
 
-      // Month filter
+      // Month filter (by month only; year handled separately)
       if (selectedMonth !== 'all') {
         const tDate = new Date(t.date);
-        const tMonthKey = `${tDate.getFullYear()}-${String(tDate.getMonth() + 1).padStart(2, '0')}`;
-        if (tMonthKey !== selectedMonth) return false;
+        if ((tDate.getMonth() + 1) !== parseInt(selectedMonth, 10)) return false;
       }
 
       // Year filter
@@ -152,10 +143,9 @@ const DashboardPage = () => {
   }, [filteredTransactions]);
 
   // Format month name (only month, no year) in UPPERCASE
-  const getMonthName = (monthKey) => {
-    if (monthKey === 'all') return 'Todos os Meses';
-    const [, month] = monthKey.split('-');
-    const date = new Date(2000, parseInt(month, 10) - 1, 1);
+  const getMonthName = (monthNumber) => {
+    if (monthNumber === 'all') return 'Todos os Meses';
+    const date = new Date(2000, parseInt(monthNumber, 10) - 1, 1);
     return date.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
   };
 
@@ -216,9 +206,9 @@ const DashboardPage = () => {
               className="filter-select"
             >
               <option value="all">Todos os Meses</option>
-              {availableMonths.map(month => (
-                <option key={month} value={month}>
-                  {getMonthName(month)}
+              {availableMonths.map(m => (
+                <option key={m} value={m}>
+                  {getMonthName(m)}
                 </option>
               ))}
             </select>
