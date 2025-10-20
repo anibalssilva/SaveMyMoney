@@ -108,7 +108,8 @@ const TransactionsPage = ({ setAlert }) => {
     return Array.from(years).sort((a,b) => a - b);
   }, [transactions]);
 
-  const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  // Months displayed in UPPERCASE (abbreviated)
+  const MONTH_NAMES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 
   // Multi-month dropdown helpers
   const toggleMonth = (monthNumber) => {

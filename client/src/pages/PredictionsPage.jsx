@@ -10,6 +10,9 @@ const PredictionsPage = () => {
   const [insights, setInsights] = useState(null);
   const [toast, setToast] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const formatCap = (s) => (typeof s === 'string' && s.length > 0)
+    ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
+    : s;
   const [daysAhead, setDaysAhead] = useState(30);
   const [modelType, setModelType] = useState('linear');
   const [categories, setCategories] = useState([]);
@@ -171,7 +174,7 @@ const PredictionsPage = () => {
               <option value="all">Todas as categorias</option>
               {categories.map((cat) => (
                 <option key={cat} value={cat}>
-                  {cat}
+                  {formatCap(cat)}
                 </option>
               ))}
             </select>

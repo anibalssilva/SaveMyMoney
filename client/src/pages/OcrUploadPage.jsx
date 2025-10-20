@@ -5,6 +5,9 @@ import api from '../services/api';
 import './OcrUploadPage.css';
 
 const OcrUploadPage = () => {
+  const formatCap = (s) => (typeof s === 'string' && s.length > 0)
+    ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
+    : s;
   const [file, setFile] = useState(null);
   const [imageSrc, setImageSrc] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -503,7 +506,7 @@ const OcrUploadPage = () => {
                       {selectedCategory.id === 'outras' ? 'Categoria padrão:' : 'Auto-detectado:'}
                     </span>
                     <span className="auto-category-value">
-                      {selectedCategory.emoji} {selectedCategory.name}
+                      {selectedCategory.emoji} {formatCap(selectedCategory.name)}
                     </span>
                     {extractedMetadata?.establishmentName && selectedCategory.id !== 'outras' && (
                       <span className="establishment-name">
@@ -524,7 +527,7 @@ const OcrUploadPage = () => {
                   >
                     {categories.map(cat => (
                       <option key={cat.id} value={cat.id}>
-                        {cat.emoji} {cat.name}
+                        {cat.emoji} {formatCap(cat.name)}
                       </option>
                     ))}
                   </select>
@@ -597,7 +600,7 @@ const OcrUploadPage = () => {
                         >
                           {subcategories.map(subcat => (
                             <option key={subcat.id} value={subcat.id}>
-                              {subcat.emoji} {subcat.name}
+                              {subcat.emoji} {formatCap(subcat.name)}
                             </option>
                           ))}
                         </select>
@@ -634,7 +637,7 @@ const OcrUploadPage = () => {
                             >
                               {subcategories.map(subcat => (
                                 <option key={subcat.id} value={subcat.id}>
-                                  {subcat.emoji} {subcat.name}
+                                  {subcat.emoji} {formatCap(subcat.name)}
                                 </option>
                               ))}
                             </select>

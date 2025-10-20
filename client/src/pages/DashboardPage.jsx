@@ -35,6 +35,11 @@ const DashboardPage = () => {
     }
   };
 
+  // Helper: capitalize first letter
+  const formatCap = (s) => (typeof s === 'string' && s.length > 0)
+    ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
+    : s;
+
   // Get unique years from transactions
   const availableYears = useMemo(() => {
     const years = new Set();
@@ -146,12 +151,12 @@ const DashboardPage = () => {
     };
   }, [filteredTransactions]);
 
-  // Format month name (only month, no year)
+  // Format month name (only month, no year) in UPPERCASE
   const getMonthName = (monthKey) => {
     if (monthKey === 'all') return 'Todos os Meses';
     const [, month] = monthKey.split('-');
     const date = new Date(2000, parseInt(month, 10) - 1, 1);
-    return date.toLocaleDateString('pt-BR', { month: 'long' });
+    return date.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
   };
 
   if (loading) {
@@ -295,7 +300,7 @@ const DashboardPage = () => {
           </div>
           <div className="stat-content">
             <div className="stat-label">CATEGORIA COM MAIOR GASTO</div>
-            <div className="stat-category-name">{stats.topCategory.name}</div>
+            <div className="stat-category-name">{formatCap(stats.topCategory.name)}</div>
             <div className="stat-value">
               {valuesVisible ? `R$ ${stats.topCategory.amount.toFixed(2)}` : '••••••'}
             </div>
@@ -331,7 +336,7 @@ const DashboardPage = () => {
                       ></div>
                     </div>
                     <div className="category-percentage-info">
-                      <span className="category-percentage-name">{cat.name}</span>
+                      <span className="category-percentage-name">{formatCap(cat.name)}</span>
                       <span className="category-percentage-value">
                         {valuesVisible ? `R$ ${cat.amount.toFixed(2)}` : '•••'}
                         <strong className="category-percentage-percent"> ({cat.percentage}%)</strong>
