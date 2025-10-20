@@ -515,7 +515,8 @@ const FinancialDashboardPage = () => {
         }
       });
 
-      const sorted = Array.from(subTotals.entries()).sort((a, b) => b[1] - a[1]).slice(0, 11); // 1 receita + 11 pares = 12 fatias
+      // Keep only the 5 largest expense offenders (category/subcategory pairs)
+      const sorted = Array.from(subTotals.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
       const keys = sorted.map(([k]) => k);
       const expenseLabels = keys.map(k => labelMap.get(k) || k);
       const expenseData = sorted.map(([, v]) => v);
