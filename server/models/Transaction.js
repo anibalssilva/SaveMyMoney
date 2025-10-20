@@ -21,6 +21,15 @@ const TransactionSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  // Optional subcategory fields (for expense breakdowns)
+  subcategoryId: {
+    type: String,
+    default: undefined,
+  },
+  subcategory: {
+    type: String,
+    default: undefined,
+  },
   type: {
     type: String,
     enum: ['expense', 'income'],

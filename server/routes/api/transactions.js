@@ -37,15 +37,29 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { description, amount, date, category, type } = req.body;
+    const { description, amount, date, category, type, subcategoryId } = req.body;
 
     try {
+      // Try to enrich subcategory name from mapping (if provided)
+      let subcategoryName;
+      if (subcategoryId && type === 'expense') {
+        try {
+          const subs = getSubcategoriesByCategory(category);
+          const found = Array.isArray(subs) ? subs.find(s => s.id === subcategoryId) : null;
+          if (found) subcategoryName = found.name;
+        } catch (e) {
+          // fail silently
+        }
+      }
+
       const newTransaction = new Transaction({
         user: req.user.id,
         description,
         amount,
         date,
         category,
+        subcategoryId: subcategoryId || undefined,
+        subcategory: subcategoryName,
         type,
       });
 
@@ -115,7 +129,7 @@ router.get('/', auth, async (req, res) => {
 // @desc    Update a transaction
 // @access  Private
 router.put('/:id', auth, async (req, res) => {
-  const { description, amount, date, category, type } = req.body;
+  const { description, amount, date, category, type, subcategoryId } = req.body;
 
   // Build transaction object
   const transactionFields = {};
@@ -124,6 +138,23 @@ router.put('/:id', auth, async (req, res) => {
   if (date) transactionFields.date = date;
   if (category) transactionFields.category = category;
   if (type) transactionFields.type = type;
+  if (typeof subcategoryId !== 'undefined') {
+    transactionFields.subcategoryId = subcategoryId || undefined;
+    // Try to map subcategory name based on current/new category
+    const categoryId = category || undefined;
+    try {
+      if (subcategoryId && (categoryId || transactionFields.category)) {
+        const cat = categoryId || (await Transaction.findById(req.params.id)).category;
+        const subs = getSubcategoriesByCategory(cat);
+        const found = Array.isArray(subs) ? subs.find(s => s.id === subcategoryId) : null;
+        transactionFields.subcategory = found ? found.name : undefined;
+      } else if (!subcategoryId) {
+        transactionFields.subcategory = undefined;
+      }
+    } catch (e) {
+      // ignore mapping errors
+    }
+  }
 
   try {
     let transaction = await Transaction.findById(req.params.id);
@@ -378,7 +409,9 @@ router.post('/ocr/save', [auth], async (req, res) => {
       user: req.user.id,
       description: item.description,
       amount: item.amount,
-      category: item.category || 'OCR Upload',
+      category: item.categoryId || item.category || 'ocr_upload',
+      subcategoryId: item.subcategoryId || undefined,
+      subcategory: item.subcategory || undefined,
       type: item.type || 'expense',
       date: transactionDate
     }));
