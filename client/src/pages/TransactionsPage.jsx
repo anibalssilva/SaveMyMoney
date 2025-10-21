@@ -641,7 +641,8 @@ const TransactionsPage = ({ setAlert }) => {
           </div>
 
           <div className="filter-group">
-            <label>📅 Período — De</label>
+            <label>📅 PERÍODO:</label>
+            <label>📅 De</label>
             <input
               type="date"
               className="filter-select"

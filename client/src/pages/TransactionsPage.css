@@ -448,6 +448,36 @@
   transition: all var(--transition-base);
 }
 
+/* Improve native date inputs to match selects */
+.filter-select[type="date"] {
+  color-scheme: dark; /* keep calendar popup dark when supported */
+  padding-right: 38px; /* room for calendar icon */
+}
+
+/* Calendar icon styling (WebKit/Blink) */
+.filter-select[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.85;
+  filter: invert(86%) sepia(16%) saturate(1383%) hue-rotate(135deg) brightness(95%) contrast(95%);
+}
+
+/* Calendar icon (Firefox) */
+.filter-select[type="date"]::-moz-focus-inner { border: 0; }
+.filter-select[type="date"]::-moz-calendar-picker-indicator {
+  cursor: pointer;
+}
+
+/* Hover/Focus to mirror select behavior */
+.filter-select[type="date"]:hover {
+  border-color: var(--cyber-primary);
+  box-shadow: 0 0 0 2px rgba(0, 240, 255, 0.1);
+}
+.filter-select[type="date"]:focus {
+  outline: none;
+  border-color: var(--cyber-primary);
+  box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.2);
+}
+
 /* Multi-select dropdown styles (shared with dashboard look&feel) */
 .multi-dd-toggle {
   width: 100%;
