@@ -354,6 +354,36 @@ router.post('/backfill-subcategories', auth, async (req, res) => {
   }
 });
 
+// @route   POST api/transactions/backfill-dates
+// @desc    Adjust stored transaction dates to local 12:00 to prevent -1 day TZ shift
+// @access  Private
+router.post('/backfill-dates', auth, async (req, res) => {
+  try {
+    const txs = await Transaction.find({ user: req.user.id }).lean();
+    let scanned = 0;
+    let updated = 0;
+
+    for (const t of txs) {
+      scanned++;
+      if (!t.date) continue;
+      const d = new Date(t.date);
+      if (isNaN(d.getTime())) continue;
+      const isMidnightLocal = d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0;
+      const isMidnightUTC = d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0;
+      if (isMidnightLocal || isMidnightUTC) {
+        d.setHours(12, 0, 0, 0);
+        await Transaction.updateOne({ _id: t._id }, { $set: { date: d } });
+        updated++;
+      }
+    }
+
+    res.json({ success: true, scanned, updated });
+  } catch (err) {
+    console.error('❌ Error backfilling dates:', err.message);
+    res.status(500).json({ msg: 'Erro ao ajustar datas' });
+  }
+});
+
 // @route   POST api/transactions/ocr
 // @desc    Extract data from receipt image (does NOT save to database)
 // @access  Private
