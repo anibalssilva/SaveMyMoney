@@ -869,7 +869,7 @@ const FinancialDashboardPage = () => {
     <div className="financial-dashboard-container">
       {/* Header */}
       <div className="dashboard-header">
-        <h1 className="dashboard-title">📊 Dashboard Financeiro</h1>
+        <h1 className="dashboard-title">📈 Evolução Financeira</h1>
         <p className="dashboard-subtitle">Análise visual completa das suas finanças</p>
       </div>
 
