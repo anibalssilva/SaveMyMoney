@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getTransactions, createTransaction, updateTransaction, deleteTransaction } from '../services/api';
 import api from '../services/api';
 import Toast from '../components/Toast';
@@ -32,12 +32,10 @@ const TransactionsPage = ({ setAlert }) => {
   const [filterType, setFilterType] = useState('all'); // all, expense, income
   const [filterCategory, setFilterCategory] = useState('all');
   const [sortBy, setSortBy] = useState('date-desc'); // date-desc, date-asc, amount-desc, amount-asc
-  const [selectedMonths, setSelectedMonths] = useState([]); // [] => todos os meses
-  const [selectedYears, setSelectedYears] = useState([]);   // [] => todos os anos
-  const [openMonths, setOpenMonths] = useState(false);
-  const [openYears, setOpenYears] = useState(false);
-  const monthsRef = useRef(null);
-  const yearsRef = useRef(null);
+  // Period filters (date range)
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  // removed month/year multi-selects; using date range instead
 
   useEffect(() => {
     loadTransactions();
@@ -115,55 +113,12 @@ const TransactionsPage = ({ setAlert }) => {
     return Array.from(cats).sort();
   }, [transactions]);
 
-  // Years available in data
+  // Years set still computed if needed elsewhere (not rendered now)
   const availableYears = useMemo(() => {
     const years = new Set();
     transactions.forEach(t => years.add(new Date(t.date).getFullYear()));
     return Array.from(years).sort((a,b) => a - b);
   }, [transactions]);
-
-  // Months displayed in UPPERCASE (abbreviated)
-  const MONTH_NAMES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
-
-  // Multi-month dropdown helpers
-  const toggleMonth = (monthNumber) => {
-    setSelectedMonths(prev => prev.includes(monthNumber)
-      ? prev.filter(m => m !== monthNumber)
-      : [...prev, monthNumber]
-    );
-  };
-
-  const clearMonths = () => { setSelectedMonths([]); setOpenMonths(false); };
-  const toggleYear = (yearNumber) => {
-    setSelectedYears(prev => prev.includes(yearNumber)
-      ? prev.filter(y => y !== yearNumber)
-      : [...prev, yearNumber]
-    );
-  };
-  const clearYears = () => { setSelectedYears([]); setOpenYears(false); };
-
-  const selectedMonthsLabel = useMemo(() => {
-    if (selectedMonths.length === 0) return 'Todos os Meses';
-    if (selectedMonths.length === 1) return MONTH_NAMES[selectedMonths[0] - 1];
-    if (selectedMonths.length === 2) return `${MONTH_NAMES[selectedMonths[0] - 1]}, ${MONTH_NAMES[selectedMonths[1] - 1]}`;
-    return `${selectedMonths.length} meses selecionados`;
-  }, [selectedMonths]);
-
-  const selectedYearsLabel = useMemo(() => {
-    if (selectedYears.length === 0) return 'Todos os Anos';
-    if (selectedYears.length === 1) return String(selectedYears[0]);
-    if (selectedYears.length === 2) return `${selectedYears[0]}, ${selectedYears[1]}`;
-    return `${selectedYears.length} anos selecionados`;
-  }, [selectedYears]);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (monthsRef.current && !monthsRef.current.contains(e.target)) setOpenMonths(false);
-      if (yearsRef.current && !yearsRef.current.contains(e.target)) setOpenYears(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
 
   // Filter and sort transactions
   const filteredTransactions = useMemo(() => {
