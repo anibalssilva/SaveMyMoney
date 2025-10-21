@@ -149,23 +149,6 @@ const DashboardPage = () => {
     return date.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
   };
 
-  // Execute server-side date backfill to avoid -1 day TZ issue
-  const handleBackfillDates = async () => {
-    const ok = window.confirm('Executar ajuste de datas? Isso corrigirá registros com horário 00:00 para 12:00 (meio-dia).');
-    if (!ok) return;
-    try {
-      const res = await api.post('/transactions/backfill-dates');
-      setToast({
-        message: `✅ Datas ajustadas: ${res.data.updated} de ${res.data.scanned}`,
-        type: 'success',
-        duration: 4000
-      });
-      await fetchTransactions();
-    } catch (err) {
-      const msg = err.response?.data?.msg || err.message || 'Erro ao ajustar datas';
-      setToast({ message: `❌ ${msg}`, type: 'error', duration: 5000 });
-    }
-  };
 
   if (loading) {
     return (
@@ -212,9 +195,6 @@ const DashboardPage = () => {
       <div className="filters-section-below">
         <div className="filters-header">
           <h3>🔍 Filtros</h3>
-          <button className="btn-clear-filters" onClick={handleBackfillDates} title="Ajustar datas gravadas no banco">
-            ⚙ Ajustar Datas
-          </button>
         </div>
 
         <div className="filters-grid-horizontal-2cols">
