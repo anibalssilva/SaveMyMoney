@@ -42,6 +42,20 @@ const TransactionsPage = ({ setAlert }) => {
   useEffect(() => {
     loadTransactions();
     loadCategories();
+    // Transparent date backfill (run once per session)
+    (async () => {
+      const FLAG = 'backfillDatesDone_v1';
+      if (localStorage.getItem(FLAG) === '1') return;
+      try {
+        const res = await api.post('/transactions/backfill-dates');
+        localStorage.setItem(FLAG, '1');
+        if (res?.data?.updated > 0) {
+          await loadTransactions();
+        }
+      } catch (e) {
+        localStorage.setItem(FLAG, '1');
+      }
+    })();
   }, []);
 
   // Load categories from API

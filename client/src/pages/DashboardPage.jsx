@@ -16,6 +16,22 @@ const DashboardPage = () => {
 
   useEffect(() => {
     fetchTransactions();
+    // Transparently adjust legacy dates once per session
+    (async () => {
+      const FLAG = 'backfillDatesDone_v1';
+      if (localStorage.getItem(FLAG) === '1') return;
+      try {
+        const res = await api.post('/transactions/backfill-dates');
+        localStorage.setItem(FLAG, '1');
+        if (res?.data?.updated > 0) {
+          // Refresh if any record changed
+          await fetchTransactions();
+        }
+      } catch (e) {
+        // Fail silently to keep UX transparent
+        localStorage.setItem(FLAG, '1');
+      }
+    })();
   }, []);
 
   const fetchTransactions = async () => {

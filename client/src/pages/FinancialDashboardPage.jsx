@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { Bar, Line, Pie } from 'react-chartjs-2';
-import { getTransactions, getSubcategoriesByCategory } from '../services/api';
+import api, { getTransactions, getSubcategoriesByCategory } from '../services/api';
 import './FinancialDashboardPage.css';
 
 // Register Chart.js components
@@ -94,6 +94,20 @@ const FinancialDashboardPage = () => {
 
   useEffect(() => {
     fetchTransactions();
+    // Transparent date backfill (run once per session)
+    (async () => {
+      const FLAG = 'backfillDatesDone_v1';
+      if (localStorage.getItem(FLAG) === '1') return;
+      try {
+        const res = await api.post('/transactions/backfill-dates');
+        localStorage.setItem(FLAG, '1');
+        if (res?.data?.updated > 0) {
+          await fetchTransactions();
+        }
+      } catch (e) {
+        localStorage.setItem(FLAG, '1');
+      }
+    })();
   }, []);
 
   const fetchTransactions = async () => {
