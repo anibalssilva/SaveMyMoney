@@ -14,6 +14,29 @@ const { getSubcategoriesByCategory, detectSubcategory } = require('../../service
 const Transaction = require('../../models/Transaction');
 const Budget = require('../../models/Budget');
 
+// Helpers
+function normalizeDateInput(input) {
+  if (!input) return undefined;
+  try {
+    // If comes as 'YYYY-MM-DD'
+    if (typeof input === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(input)) {
+      const [y, m, d] = input.split('-').map(n => parseInt(n, 10));
+      return new Date(y, m - 1, d, 12, 0, 0); // noon local to avoid TZ shift
+    }
+    const dateObj = new Date(input);
+    if (!isNaN(dateObj.getTime())) {
+      // shift to noon if time is 00:00 to guard against TZ display shift
+      if (dateObj.getHours() === 0 && dateObj.getMinutes() === 0) {
+        dateObj.setHours(12, 0, 0, 0);
+      }
+      return dateObj;
+    }
+  } catch (e) {
+    // ignore and fallback
+  }
+  return undefined;
+}
+
 // @route   POST api/transactions
 // @desc    Create a transaction
 // @access  Private
@@ -56,7 +79,7 @@ router.post(
         user: req.user.id,
         description,
         amount,
-        date,
+        date: normalizeDateInput(date),
         category,
         subcategoryId: subcategoryId || undefined,
         subcategory: subcategoryName,
@@ -135,7 +158,7 @@ router.put('/:id', auth, async (req, res) => {
   const transactionFields = {};
   if (description) transactionFields.description = description;
   if (amount) transactionFields.amount = amount;
-  if (date) transactionFields.date = date;
+  if (date) transactionFields.date = normalizeDateInput(date);
   if (category) transactionFields.category = category;
   if (type) transactionFields.type = type;
   if (typeof subcategoryId !== 'undefined') {
@@ -431,7 +454,7 @@ router.post('/ocr/save', [auth], async (req, res) => {
     // Use date from metadata if available, otherwise use current date
     const transactionDate = metadata?.date
       ? parseBrazilianDate(metadata.date)
-      : new Date();
+      : (function(){ const d=new Date(); d.setHours(12,0,0,0); return d; })();
 
     // Convert items to transactions
     const transactionsToCreate = items.map(item => ({
@@ -472,7 +495,7 @@ function parseBrazilianDate(dateStr) {
   const parts = dateStr.split('/');
   if (parts.length === 3) {
     const [day, month, year] = parts;
-    return new Date(year, month - 1, day);
+    return new Date(parseInt(year,10), parseInt(month,10) - 1, parseInt(day,10), 12, 0, 0);
   }
 
   return new Date();
@@ -520,7 +543,7 @@ router.post('/pdf', [auth, upload.single('statement')], async (req, res) => {
       if (isNaN(amount) || amount === 0) continue;
       
       const [day, month] = dateStr.split('/');
-      const date = new Date(`${currentYear}-${month}-${day}`);
+      const date = new Date(currentYear, parseInt(month,10)-1, parseInt(day,10), 12, 0, 0);
 
       transactionsToCreate.push({
         user: req.user.id,
