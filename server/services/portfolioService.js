@@ -8,6 +8,21 @@ const marketDataService = require('./marketDataService');
  * Handles portfolio management, valuation, and performance calculations
  */
 
+// Normalize date inputs to local 12:00 to avoid TZ regressions (-1 day on display)
+function normalizeDateInput(input) {
+  const toNoon = (d) => { const nd = new Date(d); nd.setHours(12,0,0,0); return nd; };
+  if (!input) return toNoon(new Date());
+  try {
+    if (typeof input === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(input)) {
+      const [y,m,d] = input.split('-').map(n=>parseInt(n,10));
+      return new Date(y, m-1, d, 12, 0, 0);
+    }
+    const parsed = new Date(input);
+    if (!isNaN(parsed.getTime())) return toNoon(parsed);
+  } catch (e) {}
+  return toNoon(new Date());
+}
+
 class PortfolioService {
   /**
    * Create a new portfolio for a user
@@ -70,7 +85,7 @@ class PortfolioService {
       price,
       totalAmount: quantity * price,
       fees,
-      date: date || new Date(),
+      date: normalizeDateInput(date),
       notes: notes || 'Compra inicial'
     });
 
@@ -110,7 +125,7 @@ class PortfolioService {
       price,
       totalAmount,
       fees,
-      date: date || new Date(),
+      date: normalizeDateInput(date),
       notes
     });
 
