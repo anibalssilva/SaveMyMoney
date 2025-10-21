@@ -187,14 +187,14 @@ const TransactionsPage = ({ setAlert }) => {
       filtered = filtered.filter(t => t.category === filterCategory);
     }
 
-    // Year filter (multi)
-    if (selectedYears.length > 0) {
-      filtered = filtered.filter(t => selectedYears.includes(new Date(t.date).getFullYear()));
+    // Period filters
+    if (startDate) {
+      const from = new Date(startDate + 'T00:00:00');
+      filtered = filtered.filter(t => new Date(t.date) >= from);
     }
-
-    // Month filter (multi)
-    if (selectedMonths.length > 0) {
-      filtered = filtered.filter(t => selectedMonths.includes(new Date(t.date).getMonth() + 1));
+    if (endDate) {
+      const to = new Date(endDate + 'T23:59:59.999');
+      filtered = filtered.filter(t => new Date(t.date) <= to);
     }
 
     // Sorting
@@ -214,7 +214,7 @@ const TransactionsPage = ({ setAlert }) => {
     });
 
     return filtered;
-  }, [transactions, searchTerm, filterType, filterCategory, selectedMonths, selectedYears, sortBy]);
+  }, [transactions, searchTerm, filterType, filterCategory, startDate, endDate, sortBy]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -399,8 +399,8 @@ const TransactionsPage = ({ setAlert }) => {
     setSearchTerm('');
     setFilterType('all');
     setFilterCategory('all');
-    setSelectedMonths([]);
-    setSelectedYears([]);
+    setStartDate('');
+    setEndDate('');
     setSortBy('date-desc');
   };
 
@@ -639,7 +639,7 @@ const TransactionsPage = ({ setAlert }) => {
       <div className="filters-card">
         <div className="filters-header">
           <h3>🔍 Filtros e Busca</h3>
-          {(searchTerm || filterType !== 'all' || filterCategory !== 'all' || selectedMonths.length > 0 || selectedYears.length > 0 || sortBy !== 'date-desc') && (
+          {(searchTerm || filterType !== 'all' || filterCategory !== 'all' || startDate || endDate || sortBy !== 'date-desc') && (
             <button className="btn-clear-filters" onClick={clearFilters}>
               ✖ Limpar Filtros
             </button>
@@ -685,67 +685,26 @@ const TransactionsPage = ({ setAlert }) => {
             </select>
           </div>
 
-          <div className="filter-group" ref={monthsRef}>
-            <label>🗓️ Mês</label>
-            <button
-              type="button"
-              className="multi-dd-toggle"
-              onClick={() => setOpenMonths(v => !v)}
-            >
-              <span>{selectedMonthsLabel}</span>
-              <span className="caret">▾</span>
-            </button>
-            {openMonths && (
-              <div className="multi-dd-panel">
-                <label className={`multi-option ${selectedMonths.length === 0 ? 'active' : ''}`}>
-                  <input type="checkbox" checked={selectedMonths.length === 0} onChange={clearMonths} />
-                  Todos os Meses
-                </label>
-                <div className="multi-options is-expanded">
-                  {MONTH_NAMES.map((name, idx) => {
-                    const value = idx + 1;
-                    const checked = selectedMonths.includes(value);
-                    return (
-                      <label key={value} className={`multi-option ${checked ? 'active' : ''}`}>
-                        <input type="checkbox" checked={checked} onChange={() => toggleMonth(value)} />
-                        {name}
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+          <div className="filter-group">
+            <label>📅 Período — De</label>
+            <input
+              type="date"
+              className="filter-select"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              max={endDate || undefined}
+            />
           </div>
 
-          <div className="filter-group" ref={yearsRef}>
-            <label>📅 Ano</label>
-            <button
-              type="button"
-              className="multi-dd-toggle"
-              onClick={() => setOpenYears(v => !v)}
-            >
-              <span>{selectedYearsLabel}</span>
-              <span className="caret">▾</span>
-            </button>
-            {openYears && (
-              <div className="multi-dd-panel">
-                <label className={`multi-option ${selectedYears.length === 0 ? 'active' : ''}`}>
-                  <input type="checkbox" checked={selectedYears.length === 0} onChange={clearYears} />
-                  Todos os Anos
-                </label>
-                <div className="multi-options is-expanded">
-                  {availableYears.map((y) => {
-                    const checked = selectedYears.includes(y);
-                    return (
-                      <label key={y} className={`multi-option ${checked ? 'active' : ''}`}>
-                        <input type="checkbox" checked={checked} onChange={() => toggleYear(y)} />
-                        {y}
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+          <div className="filter-group">
+            <label>📅 Até</label>
+            <input
+              type="date"
+              className="filter-select"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              min={startDate || undefined}
+            />
           </div>
 
           <div className="filter-group">
