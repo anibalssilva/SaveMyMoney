@@ -4,6 +4,27 @@ import api from '../services/api';
 import Toast from '../components/Toast';
 import './TransactionsPage.css';
 
+// Custom Tooltip Component
+const CustomTooltip = ({ content, title, children, className = '' }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  return (
+    <span
+      className={className}
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      {children}
+      {showTooltip && (
+        <div className="custom-tooltip">
+          <div className="tooltip-title">{title}</div>
+          <div className="tooltip-content">{content}</div>
+        </div>
+      )}
+    </span>
+  );
+};
+
 const TransactionsPage = ({ setAlert }) => {
   const [toast, setToast] = useState(null);
   const [transactions, setTransactions] = useState([]);
@@ -848,23 +869,38 @@ const TransactionsPage = ({ setAlert }) => {
                       <div className="description-content">
                         {transaction.description}
                         {transaction.notes && (
-                          <span className="notes-indicator" title={transaction.notes}>
+                          <CustomTooltip
+                            content={transaction.notes}
+                            title="📝 Observações"
+                            className="notes-indicator"
+                          >
                             💬
-                          </span>
+                          </CustomTooltip>
                         )}
                       </div>
                     </td>
                     <td className="td-category">
                       <span className="category-badge">{transaction.category && (transaction.category.charAt(0).toUpperCase() + transaction.category.slice(1).toLowerCase())}</span>
                       {transaction.paymentMethod && (
-                        <span className="payment-method-badge" title={`Método: ${transaction.paymentMethod}`}>
+                        <CustomTooltip
+                          content={
+                            transaction.paymentMethod === 'pix' ? 'PIX' :
+                            transaction.paymentMethod === 'pix_parcelado' ? 'PIX Parcelado' :
+                            transaction.paymentMethod === 'credito' ? 'Cartão de Crédito' :
+                            transaction.paymentMethod === 'debito' ? 'Cartão de Débito' :
+                            transaction.paymentMethod === 'dinheiro' ? 'Dinheiro' :
+                            transaction.paymentMethod === 'boleto' ? 'Boleto Bancário' : ''
+                          }
+                          title="💳 Método de Pagamento"
+                          className="payment-method-badge"
+                        >
                           {transaction.paymentMethod === 'pix' && '📱'}
                           {transaction.paymentMethod === 'pix_parcelado' && '📱💳'}
                           {transaction.paymentMethod === 'credito' && '💳'}
                           {transaction.paymentMethod === 'debito' && '💳'}
                           {transaction.paymentMethod === 'dinheiro' && '💵'}
                           {transaction.paymentMethod === 'boleto' && '📄'}
-                        </span>
+                        </CustomTooltip>
                       )}
                     </td>
                     <td className="td-date">

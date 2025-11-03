@@ -635,6 +635,7 @@
 }
 
 .notes-indicator {
+  position: relative;
   cursor: help;
   font-size: 1rem;
   opacity: 0.8;
@@ -647,8 +648,79 @@
   transform: scale(1.2);
 }
 
+/* Custom Tooltip */
+.custom-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 20, 40, 0.95) 100%);
+  border: 2px solid var(--cyber-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  min-width: 200px;
+  max-width: 350px;
+  z-index: 1000;
+  box-shadow: 0 8px 24px rgba(0, 240, 255, 0.3), 0 0 40px rgba(0, 240, 255, 0.1);
+  pointer-events: none;
+  opacity: 0;
+  animation: tooltipFadeIn 0.2s ease-out forwards;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.custom-tooltip::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 8px solid transparent;
+  border-top-color: var(--cyber-primary);
+}
+
+.custom-tooltip::after {
+  content: '';
+  position: absolute;
+  top: calc(100% - 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: rgba(0, 0, 0, 0.95);
+}
+
+.tooltip-title {
+  color: var(--cyber-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-xs);
+}
+
+.tooltip-content {
+  color: white;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.td-category {
+  white-space: nowrap;
+}
+
 .category-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   padding: var(--space-xs) var(--space-md);
   background: rgba(99, 102, 241, 0.2);
   border: 1px solid var(--cyber-secondary);
@@ -657,10 +729,13 @@
   font-weight: 600;
   color: var(--cyber-secondary);
   margin-right: var(--space-xs);
+  white-space: nowrap;
 }
 
 .payment-method-badge {
-  display: inline-block;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
   padding: var(--space-xs) var(--space-sm);
   background: rgba(0, 240, 255, 0.15);
   border: 1px solid var(--cyber-border);
@@ -668,6 +743,7 @@
   font-size: 1rem;
   cursor: help;
   transition: all var(--transition-base);
+  white-space: nowrap;
 }
 
 .payment-method-badge:hover {
