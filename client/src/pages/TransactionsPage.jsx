@@ -21,6 +21,8 @@ const TransactionsPage = ({ setAlert }) => {
   const [showForm, setShowForm] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState(null);
+  const [selectedTransactions, setSelectedTransactions] = useState([]);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   // Categories and subcategories
   const [availableCategories, setAvailableCategories] = useState([]);
@@ -359,6 +361,59 @@ const TransactionsPage = ({ setAlert }) => {
     setSortBy('date-desc');
   };
 
+  // Bulk selection handlers
+  const toggleSelectTransaction = (transactionId) => {
+    setSelectedTransactions(prev => {
+      if (prev.includes(transactionId)) {
+        return prev.filter(id => id !== transactionId);
+      } else {
+        return [...prev, transactionId];
+      }
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedTransactions.length === filteredTransactions.length) {
+      setSelectedTransactions([]);
+    } else {
+      setSelectedTransactions(filteredTransactions.map(t => t._id));
+    }
+  };
+
+  const confirmBulkDelete = () => {
+    if (selectedTransactions.length === 0) return;
+    setShowBulkDeleteModal(true);
+  };
+
+  const onBulkDelete = async () => {
+    if (selectedTransactions.length === 0) return;
+
+    try {
+      // Delete all selected transactions
+      await Promise.all(
+        selectedTransactions.map(id => deleteTransaction(id))
+      );
+
+      setToast({
+        message: `🗑️ ${selectedTransactions.length} transação(ões) excluída(s) com sucesso!`,
+        type: 'success',
+        duration: 3000
+      });
+
+      setSelectedTransactions([]);
+      loadTransactions();
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      setToast({
+        message: '❌ Erro ao excluir transações',
+        type: 'error',
+        duration: 5000
+      });
+    } finally {
+      setShowBulkDeleteModal(false);
+    }
+  };
+
   return (
     <div className="transactions-page">
       {toast && (
@@ -682,6 +737,27 @@ const TransactionsPage = ({ setAlert }) => {
       <div className="table-card">
         <div className="table-header">
           <h3>📋 Transações ({filteredTransactions.length})</h3>
+          {selectedTransactions.length > 0 && (
+            <div className="bulk-actions">
+              <span className="selected-count">
+                {selectedTransactions.length} selecionada(s)
+              </span>
+              <button
+                className="btn-bulk-delete"
+                onClick={confirmBulkDelete}
+                title="Excluir selecionadas"
+              >
+                🗑️ Excluir Selecionadas
+              </button>
+              <button
+                className="btn-clear-selection"
+                onClick={() => setSelectedTransactions([])}
+                title="Limpar seleção"
+              >
+                ✖ Limpar
+              </button>
+            </div>
+          )}
         </div>
 
         {filteredTransactions.length === 0 ? (
@@ -699,6 +775,14 @@ const TransactionsPage = ({ setAlert }) => {
             <table className="transactions-table">
               <thead>
                 <tr>
+                  <th className="th-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selectedTransactions.length === filteredTransactions.length && filteredTransactions.length > 0}
+                      onChange={toggleSelectAll}
+                      title="Selecionar todas"
+                    />
+                  </th>
                   <th>Descrição</th>
                   <th>Categoria</th>
                   <th>Data</th>
@@ -710,6 +794,14 @@ const TransactionsPage = ({ setAlert }) => {
               <tbody>
                 {filteredTransactions.map((transaction) => (
                   <tr key={transaction._id} className={`transaction-row ${transaction.type}`}>
+                    <td className="td-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={selectedTransactions.includes(transaction._id)}
+                        onChange={() => toggleSelectTransaction(transaction._id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </td>
                     <td className="td-description">
                       <div className="description-content">
                         {transaction.description}
@@ -778,6 +870,39 @@ const TransactionsPage = ({ setAlert }) => {
               </button>
               <button className="btn-delete-confirm" onClick={onDelete}>
                 🗑️ Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      {showBulkDeleteModal && (
+        <div className="modal-overlay" onClick={() => setShowBulkDeleteModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>⚠️ Confirmar Exclusão em Lote</h2>
+              <button className="btn-close" onClick={() => setShowBulkDeleteModal(false)}>✖</button>
+            </div>
+            <div className="modal-body">
+              <p>Tem certeza que deseja excluir <strong>{selectedTransactions.length}</strong> transação(ões) selecionada(s)?</p>
+              <div className="transaction-preview">
+                <p><strong>Total de transações:</strong> {selectedTransactions.length}</p>
+                <p><strong>Valor total:</strong> R$ {
+                  filteredTransactions
+                    .filter(t => selectedTransactions.includes(t._id))
+                    .reduce((sum, t) => sum + (t.type === 'expense' ? t.amount : -t.amount), 0)
+                    .toFixed(2)
+                }</p>
+              </div>
+              <p className="warning-text">⚠️ Esta ação não pode ser desfeita!</p>
+            </div>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setShowBulkDeleteModal(false)}>
+                Cancelar
+              </button>
+              <button className="btn-delete-confirm" onClick={onBulkDelete}>
+                🗑️ Excluir Todas
               </button>
             </div>
           </div>

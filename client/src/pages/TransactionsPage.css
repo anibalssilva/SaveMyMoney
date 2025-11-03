@@ -963,3 +963,84 @@
   margin-top: var(--space-xs);
   font-style: italic;
 }
+
+/* Bulk Selection Actions */
+.bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.selected-count {
+  color: var(--cyber-primary);
+  font-weight: 700;
+  font-size: 1rem;
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(0, 240, 255, 0.1);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--cyber-border);
+}
+
+.btn-bulk-delete {
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--gradient-danger);
+  border: none;
+  border-radius: var(--radius-full);
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.btn-bulk-delete:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.5);
+}
+
+.btn-clear-selection {
+  padding: var(--space-sm) var(--space-lg);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--cyber-border);
+  border-radius: var(--radius-full);
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.btn-clear-selection:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Checkbox Column */
+.th-checkbox,
+.td-checkbox {
+  width: 50px;
+  text-align: center;
+  padding: var(--space-md);
+}
+
+.th-checkbox input[type="checkbox"],
+.td-checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--cyber-primary);
+  border-radius: 4px;
+}
+
+.transactions-table input[type="checkbox"]:hover {
+  transform: scale(1.1);
+  transition: transform 0.2s ease;
+}
+
+/* Selected row highlight */
+.transaction-row:has(input[type="checkbox"]:checked) {
+  background: rgba(0, 240, 255, 0.05);
+  border-left: 3px solid var(--cyber-primary);
+}
