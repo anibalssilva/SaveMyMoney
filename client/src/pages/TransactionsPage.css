@@ -26,7 +26,7 @@
 
 /* Container */
 .transactions-page {
-  max-width: 1800px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: var(--space-xl);
   min-height: calc(100vh - 100px);
@@ -585,12 +585,13 @@
 }
 
 .table-wrapper {
-  overflow-x: auto;
+  overflow-x: visible;
 }
 
 .transactions-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .transactions-table thead tr {
@@ -605,6 +606,42 @@
   letter-spacing: 0.05em;
   padding: var(--space-md);
   text-align: left;
+}
+
+/* Column widths */
+.th-checkbox,
+.td-checkbox {
+  width: 50px;
+}
+
+.transactions-table th:nth-child(2),
+.td-description {
+  width: 25%;
+}
+
+.transactions-table th:nth-child(3),
+.td-category {
+  width: 15%;
+}
+
+.transactions-table th:nth-child(4),
+.td-date {
+  width: 12%;
+}
+
+.transactions-table th:nth-child(5),
+.td-type {
+  width: 13%;
+}
+
+.transactions-table th:nth-child(6),
+.td-amount {
+  width: 15%;
+}
+
+.transactions-table th:nth-child(7),
+.td-actions {
+  width: 10%;
 }
 
 .transactions-table tbody tr {
@@ -624,7 +661,6 @@
 }
 
 .td-description {
-  max-width: 400px;
   position: relative;
   overflow: visible;
 }
