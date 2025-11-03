@@ -8,6 +8,8 @@ import './TransactionsPage.css';
 const CustomTooltip = ({ content, title, children, className = '' }) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
+  if (!content) return <span className={className}>{children}</span>;
+
   return (
     <span
       className={className}
@@ -15,7 +17,7 @@ const CustomTooltip = ({ content, title, children, className = '' }) => {
       onMouseLeave={() => setShowTooltip(false)}
     >
       {children}
-      {showTooltip && (
+      {showTooltip && content && (
         <div className="custom-tooltip">
           <div className="tooltip-title">{title}</div>
           <div className="tooltip-content">{content}</div>
@@ -874,7 +876,7 @@ const TransactionsPage = ({ setAlert }) => {
                             title="📝 Observações"
                             className="notes-indicator"
                           >
-                            💬
+                            ℹ️
                           </CustomTooltip>
                         )}
                       </div>

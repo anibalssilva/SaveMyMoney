@@ -636,16 +636,19 @@
 
 .notes-indicator {
   position: relative;
+  display: inline-block;
   cursor: help;
-  font-size: 1rem;
-  opacity: 0.8;
+  font-size: 1.1rem;
+  opacity: 0.9;
   transition: all var(--transition-base);
   flex-shrink: 0;
+  z-index: 1;
 }
 
 .notes-indicator:hover {
   opacity: 1;
-  transform: scale(1.2);
+  transform: scale(1.15);
+  z-index: 999;
 }
 
 /* Custom Tooltip */
@@ -751,6 +754,10 @@
   transform: scale(1.1);
 }
 
+.td-type {
+  white-space: nowrap;
+}
+
 .type-badge {
   display: inline-flex;
   align-items: center;
@@ -759,6 +766,7 @@
   border-radius: var(--radius-full);
   font-size: 0.85rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .type-badge.expense {
