@@ -629,6 +629,10 @@
   width: 22%;
 }
 
+.transactions-table th:nth-child(2) {
+  padding-left: 0;
+}
+
 .transactions-table th:nth-child(3),
 .td-category {
   width: 18%;
@@ -673,6 +677,7 @@
 .td-description {
   position: relative;
   overflow: visible;
+  padding-left: 0;
 }
 
 .description-content {
