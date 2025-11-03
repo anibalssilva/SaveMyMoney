@@ -566,7 +566,7 @@
 .table-card {
   background: var(--cyber-card);
   border-radius: var(--radius-lg);
-  padding: var(--space-lg);
+  padding: var(--space-xl);
   border: 1px solid var(--cyber-border);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   margin-bottom: var(--space-xl);
