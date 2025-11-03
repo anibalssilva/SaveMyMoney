@@ -613,6 +613,8 @@
 .th-checkbox,
 .td-checkbox {
   width: 40px;
+  text-align: center;
+  vertical-align: middle;
 }
 
 .transactions-table th:nth-child(2),
@@ -1190,20 +1192,14 @@
 }
 
 /* Checkbox Column */
-.th-checkbox,
-.td-checkbox {
-  width: 50px;
-  text-align: center;
-  padding: var(--space-md);
-}
-
 .th-checkbox input[type="checkbox"],
 .td-checkbox input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   cursor: pointer;
   accent-color: var(--cyber-primary);
   border-radius: 4px;
+  vertical-align: middle;
 }
 
 .transactions-table input[type="checkbox"]:hover {
