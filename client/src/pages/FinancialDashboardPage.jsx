@@ -439,7 +439,7 @@ const FinancialDashboardPage = () => {
     };
   }, [barChartTransactions, selectedBarCategory, barFocusType]);
 
-  // Prepare data for Line Chart (income vs expense over time) with cumulative balance
+  // Prepare data for Line Chart (cumulative balance and expenses over time)
   const lineChartData = useMemo(() => {
     const passSelections = (t) => {
       const d = new Date(t.date);
@@ -455,9 +455,8 @@ const FinancialDashboardPage = () => {
     const singleMonthAndYear = selectedMonths.length === 1 && selectedYears.length === 1;
 
     let labels = [];
-    let incomeSeries = [];
-    let expenseSeries = [];
     let balanceSeries = [];
+    let expenseSeries = [];
 
     if (singleMonthAndYear) {
       const targetMonth = selectedMonths[0];
@@ -481,9 +480,8 @@ const FinancialDashboardPage = () => {
 
       // Calculate cumulative balance day by day
       let cumulativeBalance = 0;
-      incomeSeries = [];
-      expenseSeries = [];
       balanceSeries = [];
+      expenseSeries = [];
 
       days.forEach(d => {
         const income = incomeByDay[d] || 0;
@@ -494,9 +492,8 @@ const FinancialDashboardPage = () => {
         // Subtract expense from cumulative balance
         cumulativeBalance -= expense;
 
-        incomeSeries.push(income);
-        expenseSeries.push(expense);
         balanceSeries.push(cumulativeBalance);
+        expenseSeries.push(expense);
       });
     } else {
       const incomeByMonth = {};
@@ -513,9 +510,8 @@ const FinancialDashboardPage = () => {
 
       // Calculate cumulative balance month by month
       let cumulativeBalance = 0;
-      incomeSeries = [];
-      expenseSeries = [];
       balanceSeries = [];
+      expenseSeries = [];
 
       months.forEach(m => {
         const income = incomeByMonth[m] || 0;
@@ -526,9 +522,8 @@ const FinancialDashboardPage = () => {
         // Subtract expense from cumulative balance
         cumulativeBalance -= expense;
 
-        incomeSeries.push(income);
-        expenseSeries.push(expense);
         balanceSeries.push(cumulativeBalance);
+        expenseSeries.push(expense);
       });
     }
 
@@ -536,8 +531,8 @@ const FinancialDashboardPage = () => {
       labels,
       datasets: [
         {
-          label: 'Receitas',
-          data: incomeSeries,
+          label: 'Saldo Acumulado',
+          data: balanceSeries,
           borderColor: 'rgba(59, 130, 246, 1)',
           backgroundColor: 'rgba(59, 130, 246, 0.1)',
           borderWidth: 3,
@@ -560,20 +555,6 @@ const FinancialDashboardPage = () => {
           pointRadius: 4,
           pointHoverRadius: 6,
           pointBackgroundColor: 'rgba(239, 68, 68, 1)',
-          pointBorderColor: '#fff',
-          pointBorderWidth: 2,
-        },
-        {
-          label: 'Saldo Acumulado',
-          data: balanceSeries,
-          borderColor: 'rgba(16, 185, 129, 1)',
-          backgroundColor: 'rgba(16, 185, 129, 0.1)',
-          borderWidth: 3,
-          fill: true,
-          tension: 0.4,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          pointBackgroundColor: 'rgba(16, 185, 129, 1)',
           pointBorderColor: '#fff',
           pointBorderWidth: 2,
         },
@@ -1103,7 +1084,7 @@ const FinancialDashboardPage = () => {
           <div className="chart-card chart-card-full">
             <div className="chart-header">
               <h3>📈 Gráfico de Linhas - Evolução Temporal</h3>
-              <p className="chart-subtitle">Receitas, Despesas e Saldo Acumulado ao longo do tempo</p>
+              <p className="chart-subtitle">Saldo Acumulado e Despesas ao longo do tempo</p>
             </div>
             <div className="chart-wrapper" style={{ height: '350px' }}>
               <Line data={lineChartData} options={lineOptions} />
