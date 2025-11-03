@@ -15,7 +15,7 @@ const CustomTooltip = ({ content, title, children, className = '' }) => {
       className={className}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
-      style={{ position: 'relative', display: 'inline-block', zIndex: showTooltip ? 9999 : 1 }}
+      style={{ position: 'relative', display: 'inline-block', zIndex: showTooltip ? 10000 : 10 }}
     >
       {children}
       {showTooltip && (
@@ -870,7 +870,7 @@ const TransactionsPage = ({ setAlert }) => {
                     </td>
                     <td className="td-description">
                       <div className="description-content">
-                        {transaction.description}
+                        <span>{transaction.description}</span>
                         {transaction.notes && (
                           <CustomTooltip
                             content={transaction.notes}

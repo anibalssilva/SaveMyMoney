@@ -619,19 +619,31 @@
 .transactions-table td {
   padding: var(--space-md);
   color: white;
+  position: relative;
+  overflow: visible;
 }
 
 .td-description {
   max-width: 300px;
+  position: relative;
+  overflow: visible;
 }
 
 .description-content {
-  overflow: hidden;
+  overflow: visible;
   text-overflow: ellipsis;
   white-space: nowrap;
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+}
+
+.description-content > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 
 .notes-indicator {
@@ -642,13 +654,13 @@
   opacity: 0.9;
   transition: all var(--transition-base);
   flex-shrink: 0;
-  z-index: 1;
+  z-index: 10;
 }
 
 .notes-indicator:hover {
   opacity: 1;
   transform: scale(1.15);
-  z-index: 999;
+  z-index: 10000;
 }
 
 /* Custom Tooltip */
