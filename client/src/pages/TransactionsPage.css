@@ -26,7 +26,7 @@
 
 /* Container */
 .transactions-page {
-  max-width: 1400px;
+  max-width: 1800px;
   margin: 0 auto;
   padding: var(--space-xl);
   min-height: calc(100vh - 100px);
@@ -624,7 +624,7 @@
 }
 
 .td-description {
-  max-width: 300px;
+  max-width: 400px;
   position: relative;
   overflow: visible;
 }
@@ -674,7 +674,7 @@
   border-radius: var(--radius-md);
   padding: var(--space-md) var(--space-lg);
   min-width: 200px;
-  max-width: 350px;
+  max-width: 450px;
   z-index: 9999;
   box-shadow: 0 8px 24px rgba(0, 240, 255, 0.4), 0 0 60px rgba(0, 240, 255, 0.2);
   pointer-events: none;
@@ -787,6 +787,8 @@
   font-family: 'Courier New', monospace;
   font-weight: 700;
   font-size: 1.1rem;
+  white-space: nowrap;
+  min-width: 120px;
 }
 
 .td-amount.expense {
@@ -800,6 +802,7 @@
 .td-actions {
   display: flex;
   gap: var(--space-sm);
+  white-space: nowrap;
 }
 
 .btn-action {
