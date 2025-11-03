@@ -604,44 +604,44 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
   text-align: left;
 }
 
 /* Column widths */
 .th-checkbox,
 .td-checkbox {
-  width: 50px;
+  width: 40px;
 }
 
 .transactions-table th:nth-child(2),
 .td-description {
-  width: 25%;
+  width: 22%;
 }
 
 .transactions-table th:nth-child(3),
 .td-category {
-  width: 15%;
+  width: 18%;
 }
 
 .transactions-table th:nth-child(4),
 .td-date {
-  width: 12%;
+  width: 11%;
 }
 
 .transactions-table th:nth-child(5),
 .td-type {
-  width: 13%;
+  width: 12%;
 }
 
 .transactions-table th:nth-child(6),
 .td-amount {
-  width: 15%;
+  width: 13%;
 }
 
 .transactions-table th:nth-child(7),
 .td-actions {
-  width: 10%;
+  width: 11%;
 }
 
 .transactions-table tbody tr {
@@ -654,7 +654,7 @@
 }
 
 .transactions-table td {
-  padding: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
   color: white;
   position: relative;
   overflow: visible;
