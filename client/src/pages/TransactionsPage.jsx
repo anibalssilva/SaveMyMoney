@@ -15,9 +15,10 @@ const CustomTooltip = ({ content, title, children, className = '' }) => {
       className={className}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
+      style={{ position: 'relative', display: 'inline-block', zIndex: showTooltip ? 9999 : 1 }}
     >
       {children}
-      {showTooltip && content && (
+      {showTooltip && (
         <div className="custom-tooltip">
           <div className="tooltip-title">{title}</div>
           <div className="tooltip-content">{content}</div>

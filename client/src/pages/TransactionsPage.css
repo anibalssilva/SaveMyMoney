@@ -654,31 +654,21 @@
 /* Custom Tooltip */
 .custom-tooltip {
   position: absolute;
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + 10px);
   left: 50%;
   transform: translateX(-50%);
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 20, 40, 0.95) 100%);
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.98) 0%, rgba(20, 20, 40, 0.98) 100%);
   border: 2px solid var(--cyber-primary);
   border-radius: var(--radius-md);
   padding: var(--space-md) var(--space-lg);
   min-width: 200px;
   max-width: 350px;
-  z-index: 1000;
-  box-shadow: 0 8px 24px rgba(0, 240, 255, 0.3), 0 0 40px rgba(0, 240, 255, 0.1);
+  z-index: 9999;
+  box-shadow: 0 8px 24px rgba(0, 240, 255, 0.4), 0 0 60px rgba(0, 240, 255, 0.2);
   pointer-events: none;
-  opacity: 0;
-  animation: tooltipFadeIn 0.2s ease-out forwards;
-}
-
-@keyframes tooltipFadeIn {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
+  opacity: 1;
+  white-space: normal;
+  word-wrap: break-word;
 }
 
 .custom-tooltip::before {
