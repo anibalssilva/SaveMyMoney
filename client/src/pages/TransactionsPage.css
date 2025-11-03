@@ -605,7 +605,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-xs);
   text-align: left;
 }
 
@@ -664,7 +664,7 @@
 }
 
 .transactions-table td {
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-xs);
   color: white;
   position: relative;
   overflow: visible;
