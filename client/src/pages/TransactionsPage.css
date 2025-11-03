@@ -26,9 +26,9 @@
 
 /* Container */
 .transactions-page {
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: var(--space-xl);
+  max-width: 100%;
+  margin: 0;
+  padding: var(--space-xl) calc(var(--space-xl) * 2);
   min-height: calc(100vh - 100px);
   animation: fadeIn 0.5s ease-in-out;
 }
@@ -626,16 +626,16 @@
 
 .transactions-table th:nth-child(2),
 .td-description {
-  width: 32%;
+  width: 38%;
 }
 
 .transactions-table th:nth-child(2) {
-  padding-left: 0;
+  padding-left: var(--space-md);
 }
 
 .transactions-table th:nth-child(3),
 .td-category {
-  width: 16%;
+  width: 15%;
 }
 
 .transactions-table th:nth-child(4),
@@ -645,17 +645,17 @@
 
 .transactions-table th:nth-child(5),
 .td-type {
-  width: 12%;
+  width: 11%;
 }
 
 .transactions-table th:nth-child(6),
 .td-amount {
-  width: 13%;
+  width: 12%;
 }
 
 .transactions-table th:nth-child(7),
 .td-actions {
-  width: 10%;
+  width: 9%;
 }
 
 .transactions-table tbody tr {
@@ -677,22 +677,23 @@
 .td-description {
   position: relative;
   overflow: visible;
-  padding-left: 0;
+  padding-left: var(--space-md);
 }
 
 .description-content {
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-sm);
-  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .description-content > span:first-child {
   flex: 1 1 auto;
   min-width: 0;
-  word-break: break-word;
-  white-space: normal;
-  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .notes-indicator {
