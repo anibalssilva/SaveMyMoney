@@ -439,7 +439,7 @@ const FinancialDashboardPage = () => {
     };
   }, [barChartTransactions, selectedBarCategory, barFocusType]);
 
-  // Prepare data for Line Chart (income vs expense over time) with multi-month/year filters
+  // Prepare data for Line Chart (income vs expense over time) with cumulative balance
   const lineChartData = useMemo(() => {
     const passSelections = (t) => {
       const d = new Date(t.date);
@@ -457,6 +457,7 @@ const FinancialDashboardPage = () => {
     let labels = [];
     let incomeSeries = [];
     let expenseSeries = [];
+    let balanceSeries = [];
 
     if (singleMonthAndYear) {
       const targetMonth = selectedMonths[0];
@@ -475,9 +476,28 @@ const FinancialDashboardPage = () => {
       const days = Array.from(new Set([...Object.keys(incomeByDay), ...Object.keys(expenseByDay)]))
         .map(n => parseInt(n, 10))
         .sort((a, b) => a - b);
+
       labels = days.map(d => `${String(d).padStart(2, '0')}/${String(targetMonth).padStart(2, '0')}`);
-      incomeSeries = days.map(d => incomeByDay[d] || 0);
-      expenseSeries = days.map(d => expenseByDay[d] || 0);
+
+      // Calculate cumulative balance day by day
+      let cumulativeBalance = 0;
+      incomeSeries = [];
+      expenseSeries = [];
+      balanceSeries = [];
+
+      days.forEach(d => {
+        const income = incomeByDay[d] || 0;
+        const expense = expenseByDay[d] || 0;
+
+        // Add income to cumulative balance
+        cumulativeBalance += income;
+        // Subtract expense from cumulative balance
+        cumulativeBalance -= expense;
+
+        incomeSeries.push(income);
+        expenseSeries.push(expense);
+        balanceSeries.push(cumulativeBalance);
+      });
     } else {
       const incomeByMonth = {};
       const expenseByMonth = {};
@@ -490,8 +510,26 @@ const FinancialDashboardPage = () => {
 
       const months = Array.from(new Set([...Object.keys(incomeByMonth), ...Object.keys(expenseByMonth)])).sort();
       labels = months.map(m => MONTH_NAMES[parseInt(m.split('-')[1], 10) - 1]);
-      incomeSeries = months.map(m => incomeByMonth[m] || 0);
-      expenseSeries = months.map(m => expenseByMonth[m] || 0);
+
+      // Calculate cumulative balance month by month
+      let cumulativeBalance = 0;
+      incomeSeries = [];
+      expenseSeries = [];
+      balanceSeries = [];
+
+      months.forEach(m => {
+        const income = incomeByMonth[m] || 0;
+        const expense = expenseByMonth[m] || 0;
+
+        // Add income to cumulative balance
+        cumulativeBalance += income;
+        // Subtract expense from cumulative balance
+        cumulativeBalance -= expense;
+
+        incomeSeries.push(income);
+        expenseSeries.push(expense);
+        balanceSeries.push(cumulativeBalance);
+      });
     }
 
     return {
@@ -522,6 +560,20 @@ const FinancialDashboardPage = () => {
           pointRadius: 4,
           pointHoverRadius: 6,
           pointBackgroundColor: 'rgba(239, 68, 68, 1)',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+        },
+        {
+          label: 'Saldo Acumulado',
+          data: balanceSeries,
+          borderColor: 'rgba(16, 185, 129, 1)',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: 'rgba(16, 185, 129, 1)',
           pointBorderColor: '#fff',
           pointBorderWidth: 2,
         },
@@ -1051,7 +1103,7 @@ const FinancialDashboardPage = () => {
           <div className="chart-card chart-card-full">
             <div className="chart-header">
               <h3>📈 Gráfico de Linhas - Evolução Temporal</h3>
-              <p className="chart-subtitle">Valores ao longo do tempo</p>
+              <p className="chart-subtitle">Receitas, Despesas e Saldo Acumulado ao longo do tempo</p>
             </div>
             <div className="chart-wrapper" style={{ height: '350px' }}>
               <Line data={lineChartData} options={lineOptions} />
