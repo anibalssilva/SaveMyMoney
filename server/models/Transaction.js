@@ -39,6 +39,11 @@ const TransactionSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  paymentMethod: {
+    type: String,
+    enum: ['pix', 'pix_parcelado', 'credito', 'debito', 'dinheiro', 'boleto', ''],
+    default: '',
+  },
 });
 
 module.exports = mongoose.model('transaction', TransactionSchema);

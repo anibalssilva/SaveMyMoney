@@ -17,6 +17,7 @@ const TransactionsPage = ({ setAlert }) => {
     isRecurring: false,
     recurrenceCount: 1,
     notes: '',
+    paymentMethod: '',
   });
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -298,6 +299,7 @@ const TransactionsPage = ({ setAlert }) => {
       isRecurring: false,
       recurrenceCount: 1,
       notes: '',
+      paymentMethod: '',
     });
     setEditingId(null);
     setShowForm(false);
@@ -313,6 +315,7 @@ const TransactionsPage = ({ setAlert }) => {
       subcategoryId: transaction.subcategoryId || '',
       type: transaction.type,
       notes: transaction.notes || '',
+      paymentMethod: transaction.paymentMethod || '',
     });
     setEditingId(transaction._id);
     setShowForm(true);
@@ -573,6 +576,24 @@ const TransactionsPage = ({ setAlert }) => {
                       {cat.emoji} {cat.name && (cat.name.charAt(0).toUpperCase() + cat.name.slice(1).toLowerCase())}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>💳 Método de Pagamento</label>
+                <select
+                  name="paymentMethod"
+                  value={formData.paymentMethod}
+                  onChange={onChange}
+                  className="payment-method-select"
+                >
+                  <option value="">Selecione (opcional)</option>
+                  <option value="pix">📱 PIX</option>
+                  <option value="pix_parcelado">📱💳 PIX Parcelado</option>
+                  <option value="credito">💳 Crédito</option>
+                  <option value="debito">💳 Débito</option>
+                  <option value="dinheiro">💵 Dinheiro</option>
+                  <option value="boleto">📄 Boleto</option>
                 </select>
               </div>
             </div>
