@@ -617,6 +617,13 @@
   vertical-align: middle;
 }
 
+.th-checkbox,
+.td-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .transactions-table th:nth-child(2),
 .td-description {
   width: 22%;
@@ -1199,7 +1206,8 @@
   cursor: pointer;
   accent-color: var(--cyber-primary);
   border-radius: 4px;
-  vertical-align: middle;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .transactions-table input[type="checkbox"]:hover {
