@@ -16,6 +16,7 @@ const TransactionsPage = ({ setAlert }) => {
     type: 'expense',
     isRecurring: false,
     recurrenceCount: 1,
+    notes: '',
   });
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -296,6 +297,7 @@ const TransactionsPage = ({ setAlert }) => {
       type: 'expense',
       isRecurring: false,
       recurrenceCount: 1,
+      notes: '',
     });
     setEditingId(null);
     setShowForm(false);
@@ -310,6 +312,7 @@ const TransactionsPage = ({ setAlert }) => {
       category: transaction.category,
       subcategoryId: transaction.subcategoryId || '',
       type: transaction.type,
+      notes: transaction.notes || '',
     });
     setEditingId(transaction._id);
     setShowForm(true);
@@ -632,6 +635,24 @@ const TransactionsPage = ({ setAlert }) => {
                 )}
               </div>
             )}
+
+            {/* Notes/Observations field */}
+            <div className="form-row">
+              <div className="form-group">
+                <label>📝 Observações (opcional)</label>
+                <textarea
+                  name="notes"
+                  value={formData.notes}
+                  onChange={onChange}
+                  placeholder="Adicione observações ou detalhes adicionais sobre esta transação..."
+                  rows="3"
+                  className="notes-textarea"
+                />
+                <p className="help-text">
+                  Campo opcional para anotações adicionais
+                </p>
+              </div>
+            </div>
 
             <div className="form-actions">
               <button type="button" className="btn-cancel" onClick={resetForm}>

@@ -35,6 +35,10 @@ const TransactionSchema = new mongoose.Schema({
     enum: ['expense', 'income'],
     required: true,
   },
+  notes: {
+    type: String,
+    default: '',
+  },
 });
 
 module.exports = mongoose.model('transaction', TransactionSchema);

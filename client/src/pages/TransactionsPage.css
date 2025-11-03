@@ -274,7 +274,8 @@
 }
 
 .form-group input,
-.form-group select {
+.form-group select,
+.form-group textarea {
   background: var(--cyber-dark);
   border: 1px solid var(--cyber-border);
   border-radius: var(--radius-sm);
@@ -282,13 +283,25 @@
   padding: var(--space-md);
   font-size: 1rem;
   transition: all var(--transition-base);
+  font-family: inherit;
 }
 
 .form-group input:focus,
-.form-group select:focus {
+.form-group select:focus,
+.form-group textarea:focus {
   outline: none;
   border-color: var(--cyber-primary);
   box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.2);
+}
+
+.notes-textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.5;
+}
+
+.notes-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.4);
 }
 
 /* Radio Group */

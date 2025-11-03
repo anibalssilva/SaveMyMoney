@@ -60,7 +60,7 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { description, amount, date, category, type, subcategoryId } = req.body;
+    const { description, amount, date, category, type, subcategoryId, notes } = req.body;
 
     try {
       // Try to enrich subcategory name from mapping (if provided)
@@ -84,6 +84,7 @@ router.post(
         subcategoryId: subcategoryId || undefined,
         subcategory: subcategoryName,
         type,
+        notes: notes || '',
       });
 
       const transaction = await newTransaction.save();
@@ -152,7 +153,7 @@ router.get('/', auth, async (req, res) => {
 // @desc    Update a transaction
 // @access  Private
 router.put('/:id', auth, async (req, res) => {
-  const { description, amount, date, category, type, subcategoryId } = req.body;
+  const { description, amount, date, category, type, subcategoryId, notes } = req.body;
 
   // Build transaction object
   const transactionFields = {};
@@ -161,6 +162,7 @@ router.put('/:id', auth, async (req, res) => {
   if (date) transactionFields.date = normalizeDateInput(date);
   if (category) transactionFields.category = category;
   if (type) transactionFields.type = type;
+  if (typeof notes !== 'undefined') transactionFields.notes = notes;
   if (typeof subcategoryId !== 'undefined') {
     transactionFields.subcategoryId = subcategoryId || undefined;
     // Try to map subcategory name based on current/new category
