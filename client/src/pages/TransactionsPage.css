@@ -592,7 +592,7 @@
 .transactions-table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .transactions-table thead tr {
@@ -612,7 +612,7 @@
 /* Column widths */
 .th-checkbox,
 .td-checkbox {
-  width: 40px;
+  width: 32px;
   text-align: center;
   vertical-align: middle;
 }
@@ -626,7 +626,7 @@
 
 .transactions-table th:nth-child(2),
 .td-description {
-  width: 22%;
+  width: 32%;
 }
 
 .transactions-table th:nth-child(2) {
@@ -635,7 +635,7 @@
 
 .transactions-table th:nth-child(3),
 .td-category {
-  width: 18%;
+  width: 16%;
 }
 
 .transactions-table th:nth-child(4),
@@ -655,7 +655,7 @@
 
 .transactions-table th:nth-child(7),
 .td-actions {
-  width: 11%;
+  width: 10%;
 }
 
 .transactions-table tbody tr {
@@ -681,20 +681,18 @@
 }
 
 .description-content {
-  overflow: visible;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-sm);
+  flex-wrap: wrap;
 }
 
 .description-content > span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.35;
 }
 
 .notes-indicator {
