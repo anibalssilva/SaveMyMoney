@@ -847,10 +847,25 @@ const TransactionsPage = ({ setAlert }) => {
                     <td className="td-description">
                       <div className="description-content">
                         {transaction.description}
+                        {transaction.notes && (
+                          <span className="notes-indicator" title={transaction.notes}>
+                            💬
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="td-category">
                       <span className="category-badge">{transaction.category && (transaction.category.charAt(0).toUpperCase() + transaction.category.slice(1).toLowerCase())}</span>
+                      {transaction.paymentMethod && (
+                        <span className="payment-method-badge" title={`Método: ${transaction.paymentMethod}`}>
+                          {transaction.paymentMethod === 'pix' && '📱'}
+                          {transaction.paymentMethod === 'pix_parcelado' && '📱💳'}
+                          {transaction.paymentMethod === 'credito' && '💳'}
+                          {transaction.paymentMethod === 'debito' && '💳'}
+                          {transaction.paymentMethod === 'dinheiro' && '💵'}
+                          {transaction.paymentMethod === 'boleto' && '📄'}
+                        </span>
+                      )}
                     </td>
                     <td className="td-date">
                       {new Date(transaction.date).toLocaleDateString('pt-BR')}

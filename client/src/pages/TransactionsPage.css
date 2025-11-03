@@ -629,6 +629,22 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.notes-indicator {
+  cursor: help;
+  font-size: 1rem;
+  opacity: 0.8;
+  transition: all var(--transition-base);
+  flex-shrink: 0;
+}
+
+.notes-indicator:hover {
+  opacity: 1;
+  transform: scale(1.2);
 }
 
 .category-badge {
@@ -640,6 +656,23 @@
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--cyber-secondary);
+  margin-right: var(--space-xs);
+}
+
+.payment-method-badge {
+  display: inline-block;
+  padding: var(--space-xs) var(--space-sm);
+  background: rgba(0, 240, 255, 0.15);
+  border: 1px solid var(--cyber-border);
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  cursor: help;
+  transition: all var(--transition-base);
+}
+
+.payment-method-badge:hover {
+  background: rgba(0, 240, 255, 0.25);
+  transform: scale(1.1);
 }
 
 .type-badge {

@@ -671,14 +671,18 @@ const FinancialDashboardPage = () => {
         onClick: () => {}
       },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        titleColor: '#fff',
+        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        titleColor: '#00f0ff',
         bodyColor: '#fff',
-        borderColor: 'rgba(0, 240, 255, 0.5)',
-        borderWidth: 1,
-        padding: 12,
+        borderColor: 'rgba(0, 240, 255, 0.8)',
+        borderWidth: 2,
+        padding: 16,
         displayColors: true,
+        titleFont: { size: 14, weight: 'bold' },
+        bodyFont: { size: 13 },
+        bodySpacing: 8,
         callbacks: {
+          title: (context) => `📊 ${context[0].label}`,
           label: (context) => `${context.dataset.label}: ${currencyFormatter.format(context.parsed.y)}`
         }
       }
@@ -727,15 +731,19 @@ const FinancialDashboardPage = () => {
         }
       },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        titleColor: '#fff',
+        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        titleColor: '#00f0ff',
         bodyColor: '#fff',
-        borderColor: 'rgba(0, 240, 255, 0.5)',
-        borderWidth: 1,
-        padding: 12,
+        borderColor: 'rgba(0, 240, 255, 0.8)',
+        borderWidth: 2,
+        padding: 16,
         displayColors: true,
+        titleFont: { size: 14, weight: 'bold' },
+        bodyFont: { size: 13 },
+        bodySpacing: 8,
         callbacks: {
-          label: (context) => `${context.dataset.label}: ${currencyFormatter.format(context.parsed.y)}`
+          title: (context) => `📅 ${context[0].label}`,
+          label: (context) => `${context.dataset.label}: ${currencyFormatter.format(context.parsed.y)}`,
         }
       }
     },
@@ -797,17 +805,21 @@ const FinancialDashboardPage = () => {
         }
       },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        titleColor: '#fff',
+        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        titleColor: '#00f0ff',
         bodyColor: '#fff',
-        borderColor: 'rgba(0, 240, 255, 0.5)',
-        borderWidth: 1,
-        padding: 12,
+        borderColor: 'rgba(0, 240, 255, 0.8)',
+        borderWidth: 2,
+        padding: 16,
+        titleFont: { size: 14, weight: 'bold' },
+        bodyFont: { size: 13 },
+        bodySpacing: 8,
         callbacks: {
+          title: (context) => `🥧 ${context[0].label}`,
           label: (context) => {
             const total = context.dataset.data.reduce((a, b) => a + b, 0);
             const percentage = ((context.parsed / total) * 100).toFixed(1);
-            return `${context.label}: ${currencyFormatter.format(context.parsed)} (${percentage}%)`;
+            return `${currencyFormatter.format(context.parsed)} (${percentage}%)`;
           }
         }
       }
