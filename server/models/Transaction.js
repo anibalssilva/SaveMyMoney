@@ -41,7 +41,7 @@ const TransactionSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['pix', 'pix_parcelado', 'credito', 'debito', 'dinheiro', 'boleto', ''],
+    enum: ['pix', 'pix_parcelado', 'credito', 'debito', 'dinheiro', 'boleto', 'cartao_alimentacao', ''],
     default: '',
   },
 });

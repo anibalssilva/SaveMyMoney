@@ -95,12 +95,15 @@ const DashboardPage = () => {
   const stats = useMemo(() => {
     const expenses = filteredTransactions.filter(t => t.type === 'expense');
     const incomes = filteredTransactions.filter(t => t.type === 'income');
+    // Despesas que afetam o saldo (excluindo cartão alimentação)
+    const expensesForBalance = expenses.filter(t => t.paymentMethod !== 'cartao_alimentacao');
 
     const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
     const totalIncome = incomes.reduce((sum, t) => sum + t.amount, 0);
-    const balance = totalIncome - totalExpenses;
+    const totalExpensesForBalance = expensesForBalance.reduce((sum, t) => sum + t.amount, 0);
+    const balance = totalIncome - totalExpensesForBalance;
 
-    // Calculate financial health
+    // Calculate financial health (usando apenas despesas que afetam o saldo)
     let financialHealth = {
       status: 'balanced',
       message: 'Equilibrado',
@@ -108,14 +111,14 @@ const DashboardPage = () => {
       icon: '⚖️'
     };
 
-    if (totalExpenses > totalIncome) {
+    if (totalExpensesForBalance > totalIncome) {
       financialHealth = {
         status: 'danger',
         message: 'Atenção! Despesas maiores que receitas',
         color: 'red',
         icon: '⚠️'
       };
-    } else if (totalIncome > totalExpenses) {
+    } else if (totalIncome > totalExpensesForBalance) {
       financialHealth = {
         status: 'healthy',
         message: 'Excelente! Receitas maiores que despesas',

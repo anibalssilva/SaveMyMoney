@@ -463,13 +463,21 @@ const FinancialDashboardPage = () => {
       const targetYear = selectedYears[0];
       const incomeByDay = {};
       const expenseByDay = {};
+      const expenseForBalanceByDay = {}; // Despesas que afetam o saldo (excluindo cartão alimentação)
 
       filtered.forEach(t => {
         const d = new Date(t.date);
         if (d.getMonth() + 1 !== targetMonth || d.getFullYear() !== targetYear) return;
         const day = d.getDate();
-        if (t.type === 'income') incomeByDay[day] = (incomeByDay[day] || 0) + t.amount;
-        else if (t.type === 'expense') expenseByDay[day] = (expenseByDay[day] || 0) + t.amount;
+        if (t.type === 'income') {
+          incomeByDay[day] = (incomeByDay[day] || 0) + t.amount;
+        } else if (t.type === 'expense') {
+          expenseByDay[day] = (expenseByDay[day] || 0) + t.amount;
+          // Apenas adiciona ao saldo se NÃO for cartão alimentação
+          if (t.paymentMethod !== 'cartao_alimentacao') {
+            expenseForBalanceByDay[day] = (expenseForBalanceByDay[day] || 0) + t.amount;
+          }
+        }
       });
 
       const days = Array.from(new Set([...Object.keys(incomeByDay), ...Object.keys(expenseByDay)]))
@@ -486,11 +494,12 @@ const FinancialDashboardPage = () => {
       days.forEach(d => {
         const income = incomeByDay[d] || 0;
         const expense = expenseByDay[d] || 0;
+        const expenseForBalance = expenseForBalanceByDay[d] || 0;
 
         // Add income to cumulative balance
         cumulativeBalance += income;
-        // Subtract expense from cumulative balance
-        cumulativeBalance -= expense;
+        // Subtract expense from cumulative balance (excluindo cartão alimentação)
+        cumulativeBalance -= expenseForBalance;
 
         balanceSeries.push(cumulativeBalance);
         expenseSeries.push(expense);
@@ -498,11 +507,20 @@ const FinancialDashboardPage = () => {
     } else {
       const incomeByMonth = {};
       const expenseByMonth = {};
+      const expenseForBalanceByMonth = {}; // Despesas que afetam o saldo (excluindo cartão alimentação)
+
       filtered.forEach(t => {
         const d = new Date(t.date);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        if (t.type === 'income') incomeByMonth[key] = (incomeByMonth[key] || 0) + t.amount;
-        else if (t.type === 'expense') expenseByMonth[key] = (expenseByMonth[key] || 0) + t.amount;
+        if (t.type === 'income') {
+          incomeByMonth[key] = (incomeByMonth[key] || 0) + t.amount;
+        } else if (t.type === 'expense') {
+          expenseByMonth[key] = (expenseByMonth[key] || 0) + t.amount;
+          // Apenas adiciona ao saldo se NÃO for cartão alimentação
+          if (t.paymentMethod !== 'cartao_alimentacao') {
+            expenseForBalanceByMonth[key] = (expenseForBalanceByMonth[key] || 0) + t.amount;
+          }
+        }
       });
 
       const months = Array.from(new Set([...Object.keys(incomeByMonth), ...Object.keys(expenseByMonth)])).sort();
@@ -516,11 +534,12 @@ const FinancialDashboardPage = () => {
       months.forEach(m => {
         const income = incomeByMonth[m] || 0;
         const expense = expenseByMonth[m] || 0;
+        const expenseForBalance = expenseForBalanceByMonth[m] || 0;
 
         // Add income to cumulative balance
         cumulativeBalance += income;
-        // Subtract expense from cumulative balance
-        cumulativeBalance -= expense;
+        // Subtract expense from cumulative balance (excluindo cartão alimentação)
+        cumulativeBalance -= expenseForBalance;
 
         balanceSeries.push(cumulativeBalance);
         expenseSeries.push(expense);

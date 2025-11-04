@@ -203,12 +203,14 @@ const TransactionsPage = ({ setAlert }) => {
   const stats = useMemo(() => {
     const expenses = filteredTransactions.filter(t => t.type === 'expense');
     const incomes = filteredTransactions.filter(t => t.type === 'income');
+    // Despesas que afetam o saldo (excluindo cartão alimentação)
+    const expensesForBalance = expenses.filter(t => t.paymentMethod !== 'cartao_alimentacao');
 
     return {
       totalExpenses: expenses.reduce((sum, t) => sum + t.amount, 0),
       totalIncome: incomes.reduce((sum, t) => sum + t.amount, 0),
       count: filteredTransactions.length,
-      balance: incomes.reduce((sum, t) => sum + t.amount, 0) - expenses.reduce((sum, t) => sum + t.amount, 0)
+      balance: incomes.reduce((sum, t) => sum + t.amount, 0) - expensesForBalance.reduce((sum, t) => sum + t.amount, 0)
     };
   }, [filteredTransactions]);
 
@@ -618,6 +620,7 @@ const TransactionsPage = ({ setAlert }) => {
                   <option value="debito">💳 Débito</option>
                   <option value="dinheiro">💵 Dinheiro</option>
                   <option value="boleto">📄 Boleto</option>
+                  <option value="cartao_alimentacao">🍽️ Cartão Alimentação/Refeição</option>
                 </select>
               </div>
             </div>
@@ -892,7 +895,8 @@ const TransactionsPage = ({ setAlert }) => {
                             transaction.paymentMethod === 'credito' ? 'Cartão de Crédito' :
                             transaction.paymentMethod === 'debito' ? 'Cartão de Débito' :
                             transaction.paymentMethod === 'dinheiro' ? 'Dinheiro' :
-                            transaction.paymentMethod === 'boleto' ? 'Boleto Bancário' : ''
+                            transaction.paymentMethod === 'boleto' ? 'Boleto Bancário' :
+                            transaction.paymentMethod === 'cartao_alimentacao' ? 'Cartão Alimentação/Refeição' : ''
                           }
                           title="💳 Método de Pagamento"
                           className="payment-method-badge"
@@ -903,6 +907,7 @@ const TransactionsPage = ({ setAlert }) => {
                           {transaction.paymentMethod === 'debito' && '💳'}
                           {transaction.paymentMethod === 'dinheiro' && '💵'}
                           {transaction.paymentMethod === 'boleto' && '📄'}
+                          {transaction.paymentMethod === 'cartao_alimentacao' && '🍽️'}
                         </CustomTooltip>
                       )}
                     </td>
