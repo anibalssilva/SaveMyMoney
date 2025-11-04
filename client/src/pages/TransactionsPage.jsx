@@ -873,7 +873,7 @@ const TransactionsPage = ({ setAlert }) => {
                     </td>
                     <td className="td-description">
                       <div className="description-content">
-                        <span>{transaction.description}</span>
+                        <span>{transaction.description.toUpperCase()}</span>
                         {transaction.notes && (
                           <CustomTooltip
                             content={transaction.notes}
