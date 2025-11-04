@@ -7,7 +7,7 @@ const { Parser } = require('json2csv');
 const xlsx = require('xlsx');
 const multer = require('multer');
 const { createWorker } = require('tesseract.js');
-const pdf = require('pdf-parse');
+// const pdf = require('pdf-parse'); // Temporarily disabled due to ESM import issue
 const { extractReceiptData, getExpenseCategories, getIncomeCategories } = require('../../services/advancedOCR');
 const { getSubcategoriesByCategory, detectSubcategory } = require('../../services/subcategoryDetector');
 
@@ -544,8 +544,10 @@ router.post('/pdf', [auth, upload.single('statement')], async (req, res) => {
   }
 
   try {
-    const data = await pdf(req.file.buffer);
-    const text = data.text;
+    // Temporarily disabled due to ESM import issue with pdf-parse
+    return res.status(503).json({ msg: 'PDF upload temporarily unavailable' });
+    // const data = await pdf(req.file.buffer);
+    // const text = data.text;
 
     // Regex to capture transactions from a bank statement.
     // This is a flexible starting point and may need adjustments for specific bank formats.
