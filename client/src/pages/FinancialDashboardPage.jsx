@@ -397,19 +397,10 @@ const FinancialDashboardPage = () => {
   // Prepare data for Line Chart (cumulative balance and expenses over time)
   const lineChartData = useMemo(() => {
     const passSelections = (t) => {
-      const d = new Date(t.date);
-
-      // Filter by date range
-      if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        if (d < start) return false;
-      }
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        if (d > end) return false;
-      }
+      // Filter by date range using string comparison to avoid timezone issues
+      const tDateStr = new Date(t.date).toISOString().split('T')[0];
+      if (startDate && tDateStr < startDate) return false;
+      if (endDate && tDateStr > endDate) return false;
 
       if (selectedCategory !== 'all' && t.category !== selectedCategory) return false;
       return true;
