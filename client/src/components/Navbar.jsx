@@ -75,6 +75,17 @@ const Navbar = () => {
                   💎 Investimentos
                 </Link>
               </li>
+              <li className="navbar-nav-item">
+                <a
+                  href={import.meta.env.VITE_STREAMLIT_URL || 'http://localhost:8501'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="navbar-nav-link navbar-nav-link-external"
+                  title="Abre em nova aba"
+                >
+                  📊 Gráficos Dinâmicos ↗
+                </a>
+              </li>
             </ul>
 
             <div className="navbar-actions">
@@ -152,6 +163,17 @@ const Navbar = () => {
                   <Link to="/investments" className="navbar-nav-link" onClick={closeMobileMenu}>
                     💎 Investimentos
                   </Link>
+                </li>
+                <li>
+                  <a
+                    href={import.meta.env.VITE_STREAMLIT_URL || 'http://localhost:8501'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="navbar-nav-link navbar-nav-link-external"
+                    onClick={closeMobileMenu}
+                  >
+                    📊 Gráficos Dinâmicos ↗
+                  </a>
                 </li>
               </ul>
 
