@@ -11,8 +11,8 @@ const DashboardPage = () => {
 
   // Filtros
   const [selectedType, setSelectedType] = useState('all'); // all, expense, income
-  const [selectedMonth, setSelectedMonth] = useState('all'); // 'all' or 1..12
-  const [selectedYear, setSelectedYear] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     fetchTransactions();
@@ -56,18 +56,12 @@ const DashboardPage = () => {
     ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
     : s;
 
-  // Get unique years from transactions
-  const availableYears = useMemo(() => {
-    const years = new Set();
-    transactions.forEach(t => {
-      const date = new Date(t.date);
-      years.add(date.getFullYear());
-    });
-    return Array.from(years).sort((a,b) => a - b);
-  }, [transactions]);
-
-  // Fixed list of 12 months (JANEIRO..DEZEMBRO)
-  const availableMonths = useMemo(() => Array.from({ length: 12 }, (_, i) => i + 1), []);
+  // Clear filters function
+  const clearFilters = () => {
+    setSelectedType('all');
+    setStartDate('');
+    setEndDate('');
+  };
 
   // Filter transactions
   const filteredTransactions = useMemo(() => {
@@ -75,21 +69,23 @@ const DashboardPage = () => {
       // Type filter
       if (selectedType !== 'all' && t.type !== selectedType) return false;
 
-      // Month filter (by month only; year handled separately)
-      if (selectedMonth !== 'all') {
-        const tDate = new Date(t.date);
-        if ((tDate.getMonth() + 1) !== parseInt(selectedMonth, 10)) return false;
-      }
+      const tDate = new Date(t.date);
 
-      // Year filter
-      if (selectedYear !== 'all') {
-        const tDate = new Date(t.date);
-        if (tDate.getFullYear() !== parseInt(selectedYear)) return false;
+      // Date range filter
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        if (tDate < start) return false;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        if (tDate > end) return false;
       }
 
       return true;
     });
-  }, [transactions, selectedType, selectedMonth, selectedYear]);
+  }, [transactions, selectedType, startDate, endDate]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -161,13 +157,6 @@ const DashboardPage = () => {
     };
   }, [filteredTransactions]);
 
-  // Format month name (only month, no year) in UPPERCASE
-  const getMonthName = (monthNumber) => {
-    if (monthNumber === 'all') return 'Todos os Meses';
-    const date = new Date(2000, parseInt(monthNumber, 10) - 1, 1);
-    return date.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
-  };
-
 
   if (loading) {
     return (
@@ -217,38 +206,36 @@ const DashboardPage = () => {
         </div>
 
         <div className="filters-grid-horizontal-2cols">
-          {/* Month Filter */}
+          {/* Start Date Filter */}
           <div className="filter-group">
-            <label className="filter-label">MÊS</label>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">Todos os Meses</option>
-              {availableMonths.map(m => (
-                <option key={m} value={m}>
-                  {getMonthName(m)}
-                </option>
-              ))}
-            </select>
+            <label className="filter-label">📅 DE</label>
+            <input
+              type="date"
+              className="date-input"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              placeholder="Data inicial"
+            />
           </div>
 
-          {/* Year Filter */}
+          {/* End Date Filter */}
           <div className="filter-group">
-            <label className="filter-label">ANO</label>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">Todos os Anos</option>
-              {availableYears.map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
+            <label className="filter-label">📅 ATÉ</label>
+            <input
+              type="date"
+              className="date-input"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              placeholder="Data final"
+            />
           </div>
         </div>
+
+        {(startDate || endDate) && (
+          <button className="clear-filters-btn" onClick={clearFilters}>
+            ✖ Limpar Filtros
+          </button>
+        )}
       </div>
 
       {/* Statistics Cards - Responsive Grid */}
