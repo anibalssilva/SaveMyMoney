@@ -95,6 +95,12 @@ try:
     # Sidebar - Filtros
     st.sidebar.header("🔍 Filtros")
 
+    # Botão para limpar filtros
+    if st.sidebar.button("🔄 Limpar Todos os Filtros", use_container_width=True):
+        st.rerun()
+
+    st.sidebar.markdown("---")
+
     # Filtro de Tipo de Transação
     transaction_types = st.sidebar.multiselect(
         "Tipo de Transação",
@@ -103,14 +109,34 @@ try:
         help="Selecione Receita ou Despesa"
     )
 
+    # Mostrar aviso se receitas não estiverem selecionadas
+    if 'income' not in transaction_types:
+        st.sidebar.warning("⚠️ Tipo 'income' não selecionado - Receitas não serão exibidas!")
+
     # Filtro de Categorias
+    income_cats = df[df['type'] == 'income']['category'].dropna().unique().tolist()
+    expense_cats = df[df['type'] == 'expense']['category'].dropna().unique().tolist()
+
+    # Mostrar informação sobre categorias disponíveis
+    st.sidebar.markdown(f"**Categorias disponíveis:**")
+    if 'income' in transaction_types and income_cats:
+        st.sidebar.markdown(f"💰 Receitas: {len(income_cats)} categorias")
+    if 'expense' in transaction_types and expense_cats:
+        st.sidebar.markdown(f"💸 Despesas: {len(expense_cats)} categorias")
+
     available_categories = df[df['type'].isin(transaction_types)]['category'].dropna().unique().tolist()
     selected_categories = st.sidebar.multiselect(
         "Categorias",
         options=sorted(available_categories),
         default=available_categories,
-        help="Selecione uma ou mais categorias"
+        help="Selecione uma ou mais categorias (receitas e despesas)"
     )
+
+    # Mostrar quais categorias de receita foram selecionadas
+    if 'income' in transaction_types:
+        income_selected = [c for c in selected_categories if c in income_cats]
+        if not income_selected:
+            st.sidebar.error("❌ Nenhuma categoria de RECEITA selecionada! Receitas não aparecerão.")
 
     # Filtro de Subcategorias (baseado nas categorias selecionadas)
     if selected_categories:
@@ -224,6 +250,16 @@ try:
     if df_filtered.empty:
         st.warning("⚠️ Nenhuma transação encontrada com os filtros selecionados.")
         st.stop()
+
+    # Debug: Mostrar estatísticas de filtragem
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📊 Estatísticas da Filtragem")
+    st.sidebar.markdown(f"**Total original:** {len(df)} transações")
+    st.sidebar.markdown(f"**Após filtros:** {len(df_filtered)} transações")
+    income_count = len(df_filtered[df_filtered['type'] == 'income'])
+    expense_count = len(df_filtered[df_filtered['type'] == 'expense'])
+    st.sidebar.markdown(f"- 💰 Receitas: {income_count}")
+    st.sidebar.markdown(f"- 💸 Despesas: {expense_count}")
 
     # Seção de Métricas
     st.markdown("---")
