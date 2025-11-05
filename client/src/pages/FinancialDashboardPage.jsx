@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { Bar, Line, Pie } from 'react-chartjs-2';
 import api, { getTransactions, getSubcategoriesByCategory } from '../services/api';
+import { brazilianToISO, isValidBRDate } from '../utils/dateUtils';
 import './FinancialDashboardPage.css';
 
 // Register Chart.js components
@@ -87,6 +88,24 @@ const FinancialDashboardPage = () => {
     () => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }),
     []
   );
+
+  // Helper: aplica máscara DD/MM/YYYY
+  const applyDateMask = (value) => {
+    let numbers = value.replace(/\D/g, '');
+    numbers = numbers.slice(0, 8);
+    if (numbers.length >= 5) {
+      return `${numbers.slice(0, 2)}/${numbers.slice(2, 4)}/${numbers.slice(4)}`;
+    } else if (numbers.length >= 3) {
+      return `${numbers.slice(0, 2)}/${numbers.slice(2)}`;
+    }
+    return numbers;
+  };
+
+  // Handler para mudança de data com máscara
+  const handleDateChange = (value, setter) => {
+    const masked = applyDateMask(value);
+    setter(masked);
+  };
 
   // Consistent color mapping
   const CATEGORY_COLOR_MAP = {
@@ -194,13 +213,13 @@ const FinancialDashboardPage = () => {
       // Normalizar datas para comparação (apenas YYYY-MM-DD)
       const tDateStr = new Date(t.date).toISOString().split('T')[0];
 
+      // Converter datas brasileiras para ISO se válidas
+      const startISO = startDate && isValidBRDate(startDate) ? brazilianToISO(startDate) : '';
+      const endISO = endDate && isValidBRDate(endDate) ? brazilianToISO(endDate) : '';
+
       // Filter by date range
-      if (startDate) {
-        if (tDateStr < startDate) return false;
-      }
-      if (endDate) {
-        if (tDateStr > endDate) return false;
-      }
+      if (startISO && tDateStr < startISO) return false;
+      if (endISO && tDateStr > endISO) return false;
 
       return true;
     });
@@ -399,8 +418,13 @@ const FinancialDashboardPage = () => {
     const passSelections = (t) => {
       // Filter by date range using string comparison to avoid timezone issues
       const tDateStr = new Date(t.date).toISOString().split('T')[0];
-      if (startDate && tDateStr < startDate) return false;
-      if (endDate && tDateStr > endDate) return false;
+
+      // Converter datas brasileiras para ISO se válidas
+      const startISO = startDate && isValidBRDate(startDate) ? brazilianToISO(startDate) : '';
+      const endISO = endDate && isValidBRDate(endDate) ? brazilianToISO(endDate) : '';
+
+      if (startISO && tDateStr < startISO) return false;
+      if (endISO && tDateStr > endISO) return false;
 
       if (selectedCategory !== 'all' && t.category !== selectedCategory) return false;
       return true;
@@ -420,9 +444,11 @@ const FinancialDashboardPage = () => {
     }
 
     // Determine if we should show daily or monthly view based on date range
-    const hasPeriod = startDate && endDate;
-    const start = hasPeriod ? new Date(startDate) : null;
-    const end = hasPeriod ? new Date(endDate) : null;
+    const startISO = startDate && isValidBRDate(startDate) ? brazilianToISO(startDate) : '';
+    const endISO = endDate && isValidBRDate(endDate) ? brazilianToISO(endDate) : '';
+    const hasPeriod = startISO && endISO;
+    const start = hasPeriod ? new Date(startISO) : null;
+    const end = hasPeriod ? new Date(endISO) : null;
     const daysDiff = hasPeriod ? Math.ceil((end - start) / (1000 * 60 * 60 * 24)) : 0;
     const singleMonthAndYear = hasPeriod && daysDiff <= 31;
 
@@ -937,22 +963,24 @@ const FinancialDashboardPage = () => {
           <div className="filter-group">
             <label className="filter-label">📅 De</label>
             <input
-              type="date"
+              type="text"
               className="date-input"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              placeholder="Data inicial"
+              onChange={(e) => handleDateChange(e.target.value, setStartDate)}
+              placeholder="DD/MM/AAAA"
+              maxLength="10"
             />
           </div>
 
           <div className="filter-group">
             <label className="filter-label">📅 Até</label>
             <input
-              type="date"
+              type="text"
               className="date-input"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              placeholder="Data final"
+              onChange={(e) => handleDateChange(e.target.value, setEndDate)}
+              placeholder="DD/MM/AAAA"
+              maxLength="10"
             />
           </div>
         </div>

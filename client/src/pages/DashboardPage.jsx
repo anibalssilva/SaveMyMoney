@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
 import Toast from '../components/Toast';
+import { brazilianToISO, isValidBRDate } from '../utils/dateUtils';
 import './DashboardPage.css';
 
 const DashboardPage = () => {
@@ -63,6 +64,29 @@ const DashboardPage = () => {
     setEndDate('');
   };
 
+  // Helper: aplica máscara DD/MM/YYYY
+  const applyDateMask = (value) => {
+    // Remove tudo que não é número
+    let numbers = value.replace(/\D/g, '');
+
+    // Limita a 8 dígitos
+    numbers = numbers.slice(0, 8);
+
+    // Aplica a máscara DD/MM/YYYY
+    if (numbers.length >= 5) {
+      return `${numbers.slice(0, 2)}/${numbers.slice(2, 4)}/${numbers.slice(4)}`;
+    } else if (numbers.length >= 3) {
+      return `${numbers.slice(0, 2)}/${numbers.slice(2)}`;
+    }
+    return numbers;
+  };
+
+  // Handler para mudança de data com máscara
+  const handleDateChange = (value, setter) => {
+    const masked = applyDateMask(value);
+    setter(masked);
+  };
+
   // Filter transactions
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
@@ -71,8 +95,13 @@ const DashboardPage = () => {
 
       // Date range filter using string comparison to avoid timezone issues
       const tDateStr = new Date(t.date).toISOString().split('T')[0];
-      if (startDate && tDateStr < startDate) return false;
-      if (endDate && tDateStr > endDate) return false;
+
+      // Converter datas brasileiras para ISO se válidas
+      const startISO = startDate && isValidBRDate(startDate) ? brazilianToISO(startDate) : '';
+      const endISO = endDate && isValidBRDate(endDate) ? brazilianToISO(endDate) : '';
+
+      if (startISO && tDateStr < startISO) return false;
+      if (endISO && tDateStr > endISO) return false;
 
       return true;
     });
@@ -201,11 +230,12 @@ const DashboardPage = () => {
           <div className="filter-group">
             <label className="filter-label">📅 DE</label>
             <input
-              type="date"
+              type="text"
               className="date-input"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              placeholder="Data inicial"
+              onChange={(e) => handleDateChange(e.target.value, setStartDate)}
+              placeholder="DD/MM/AAAA"
+              maxLength="10"
             />
           </div>
 
@@ -213,11 +243,12 @@ const DashboardPage = () => {
           <div className="filter-group">
             <label className="filter-label">📅 ATÉ</label>
             <input
-              type="date"
+              type="text"
               className="date-input"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              placeholder="Data final"
+              onChange={(e) => handleDateChange(e.target.value, setEndDate)}
+              placeholder="DD/MM/AAAA"
+              maxLength="10"
             />
           </div>
         </div>

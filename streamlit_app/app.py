@@ -178,7 +178,8 @@ try:
             "Selecione a Data",
             value=datetime.now(),
             min_value=df['date'].min().date(),
-            max_value=df['date'].max().date()
+            max_value=df['date'].max().date(),
+            format="DD/MM/YYYY"
         )
         df_filtered = df[df['date'].dt.date == selected_date]
 
@@ -205,14 +206,16 @@ try:
                 "De",
                 value=df['date'].min().date(),
                 min_value=df['date'].min().date(),
-                max_value=df['date'].max().date()
+                max_value=df['date'].max().date(),
+                format="DD/MM/YYYY"
             )
         with col2:
             end_date = st.date_input(
                 "Até",
                 value=df['date'].max().date(),
                 min_value=df['date'].min().date(),
-                max_value=df['date'].max().date()
+                max_value=df['date'].max().date(),
+                format="DD/MM/YYYY"
             )
 
         df_filtered = df[(df['date'].dt.date >= start_date) & (df['date'].dt.date <= end_date)]
