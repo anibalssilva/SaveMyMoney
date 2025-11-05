@@ -69,19 +69,10 @@ const DashboardPage = () => {
       // Type filter
       if (selectedType !== 'all' && t.type !== selectedType) return false;
 
-      const tDate = new Date(t.date);
-
-      // Date range filter
-      if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        if (tDate < start) return false;
-      }
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        if (tDate > end) return false;
-      }
+      // Date range filter using string comparison to avoid timezone issues
+      const tDateStr = new Date(t.date).toISOString().split('T')[0];
+      if (startDate && tDateStr < startDate) return false;
+      if (endDate && tDateStr > endDate) return false;
 
       return true;
     });
