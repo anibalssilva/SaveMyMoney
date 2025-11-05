@@ -152,6 +152,29 @@ Ticker animado com cotações de ações, índices e moedas:
 
 **Documentação:** [COTACOES.md](./COTACOES.md)
 
+### 8. Gráficos Dinâmicos (Streamlit) 📊
+
+Aplicação Streamlit para análise visual customizável dos seus dados financeiros:
+
+**Recursos:**
+- 10 tipos de gráficos interativos
+- Filtros avançados (categorias, subcategorias, tipo, período)
+- Métricas em tempo real
+- Exportação de dados em CSV
+- Conexão direta com MongoDB
+- Tema cyber-futuristic
+
+**Tipos de Gráficos:**
+- Barras (Categorias, Subcategorias, Período)
+- Linhas (Evolução Temporal)
+- Pizza (Distribuição por Categoria/Subcategoria)
+- Scatter (Valor vs Data)
+- Funil (Categorias Ordenadas)
+- Treemap (Hierarquia de Gastos)
+- Heatmap (Gastos por Dia da Semana/Mês)
+
+**Documentação:** [streamlit_app/README.md](./streamlit_app/README.md)
+
 ## 🏗️ Arquitetura
 
 ### Estrutura do Projeto
@@ -182,6 +205,12 @@ SaveMyMoney/
 │   │   └── main.py         # Entry point
 │   ├── requirements.txt
 │   └── README.md
+│
+├── streamlit_app/          # Gráficos Dinâmicos (Streamlit)
+│   ├── app.py              # Aplicação principal
+│   ├── requirements.txt    # Dependências Python
+│   ├── .env.example        # Exemplo de configuração
+│   └── README.md           # Documentação
 │
 ├── ALERTAS.md              # Docs: Sistema de Alertas
 ├── PREVISOES_ML.md         # Docs: Previsões ML
@@ -326,7 +355,31 @@ uvicorn app.main:app --reload --port 8000
 
 Acesse: http://localhost:8000/docs (Swagger UI)
 
-### 5. MongoDB
+### 5. Streamlit App (Gráficos Dinâmicos) - Opcional
+
+```bash
+cd streamlit_app
+pip install -r requirements.txt
+```
+
+Crie o arquivo `.env`:
+
+```env
+MONGO_URI=mongodb://localhost:27017/savemymoney
+# ou use a mesma URI do backend
+```
+
+Inicie a aplicação:
+
+```bash
+streamlit run app.py
+```
+
+Acesse: http://localhost:8501
+
+**Consulte a documentação completa:** [streamlit_app/README.md](./streamlit_app/README.md)
+
+### 6. MongoDB
 
 **Opção 1: Local**
 ```bash
@@ -456,6 +509,14 @@ Cada módulo possui documentação completa com exemplos, troubleshooting e best
 - **NumPy** - Computação numérica
 - **Pandas** - Manipulação de dados
 - **Pydantic** - Validação de dados
+
+### Streamlit App
+
+- **Python** 3.8+
+- **Streamlit** - Framework de dashboards interativos
+- **Plotly** - Gráficos interativos avançados
+- **Pandas** - Manipulação de dados
+- **pymongo** - Driver MongoDB para Python
 
 ### Integrações
 
