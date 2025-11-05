@@ -33,7 +33,7 @@ Adicione um link no menu de navegação da aplicação React que abre o Streamli
 
 ```jsx
 <a
-  href="https://seu-app-streamlit.onrender.com"
+  href="https://savemymoney-streamlit.onrender.com"
   target="_blank"
   rel="noopener noreferrer"
   className="nav-link"
@@ -52,7 +52,7 @@ import React from 'react';
 
 const StreamlitDashboardPage = () => {
   const streamlitUrl = process.env.NODE_ENV === 'production'
-    ? 'https://seu-app-streamlit.onrender.com'
+    ? 'https://savemymoney-streamlit.onrender.com'
     : 'http://localhost:8501';
 
   return (
