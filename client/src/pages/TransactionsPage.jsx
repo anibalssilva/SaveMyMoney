@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { getTransactions, createTransaction, updateTransaction, deleteTransaction } from '../services/api';
 import api from '../services/api';
 import Toast from '../components/Toast';
-import { brazilianToISO, isValidBRDate } from '../utils/dateUtils';
 import './TransactionsPage.css';
 
 // Custom Tooltip Component
@@ -142,23 +141,6 @@ const TransactionsPage = ({ setAlert }) => {
     return Array.from(cats).sort();
   }, [transactions]);
 
-  // Helper: aplica máscara DD/MM/YYYY
-  const applyDateMask = (value) => {
-    let numbers = value.replace(/\D/g, '');
-    numbers = numbers.slice(0, 8);
-    if (numbers.length >= 5) {
-      return `${numbers.slice(0, 2)}/${numbers.slice(2, 4)}/${numbers.slice(4)}`;
-    } else if (numbers.length >= 3) {
-      return `${numbers.slice(0, 2)}/${numbers.slice(2)}`;
-    }
-    return numbers;
-  };
-
-  const handleDateChange = (value, setter) => {
-    const masked = applyDateMask(value);
-    setter(masked);
-  };
-
   // Years set still computed if needed elsewhere (not rendered now)
   const availableYears = useMemo(() => {
     const years = new Set();
@@ -188,16 +170,13 @@ const TransactionsPage = ({ setAlert }) => {
       filtered = filtered.filter(t => t.category === filterCategory);
     }
 
-    // Period filters - converter formato brasileiro para ISO
-    const startISO = startDate && isValidBRDate(startDate) ? brazilianToISO(startDate) : '';
-    const endISO = endDate && isValidBRDate(endDate) ? brazilianToISO(endDate) : '';
-
-    if (startISO) {
-      const from = new Date(startISO + 'T00:00:00');
+    // Period filters
+    if (startDate) {
+      const from = new Date(startDate + 'T00:00:00');
       filtered = filtered.filter(t => new Date(t.date) >= from);
     }
-    if (endISO) {
-      const to = new Date(endISO + 'T23:59:59.999');
+    if (endDate) {
+      const to = new Date(endDate + 'T23:59:59.999');
       filtered = filtered.filter(t => new Date(t.date) <= to);
     }
 
@@ -788,24 +767,20 @@ const TransactionsPage = ({ setAlert }) => {
           <div className="filter-group">
             <label>📅 De</label>
             <input
-              type="text"
+              type="date"
               className="filter-select"
               value={startDate}
-              onChange={(e) => handleDateChange(e.target.value, setStartDate)}
-              placeholder="DD/MM/AAAA"
-              maxLength="10"
+              onChange={(e) => setStartDate(e.target.value)}
             />
           </div>
 
           <div className="filter-group">
             <label>📅 Até</label>
             <input
-              type="text"
+              type="date"
               className="filter-select"
               value={endDate}
-              onChange={(e) => handleDateChange(e.target.value, setEndDate)}
-              placeholder="DD/MM/AAAA"
-              maxLength="10"
+              onChange={(e) => setEndDate(e.target.value)}
             />
           </div>
 
