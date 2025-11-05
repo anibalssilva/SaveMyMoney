@@ -80,10 +80,10 @@ const Navbar = () => {
                   href={import.meta.env.VITE_STREAMLIT_URL || 'http://localhost:8501'}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="navbar-nav-link navbar-nav-link-external"
+                  className="navbar-nav-link"
                   title="Abre em nova aba"
                 >
-                  📊 Gráficos Dinâmicos ↗
+                  📊 Gráficos Dinâmicos
                 </a>
               </li>
             </ul>
@@ -169,10 +169,10 @@ const Navbar = () => {
                     href={import.meta.env.VITE_STREAMLIT_URL || 'http://localhost:8501'}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="navbar-nav-link navbar-nav-link-external"
+                    className="navbar-nav-link"
                     onClick={closeMobileMenu}
                   >
-                    📊 Gráficos Dinâmicos ↗
+                    📊 Gráficos Dinâmicos
                   </a>
                 </li>
               </ul>
