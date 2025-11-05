@@ -354,6 +354,17 @@ const subcategoryMappings = {
       emoji: '💰',
       keywords: ['emprestimo', 'loan', 'financiamento', 'credito', 'parcela']
     },
+    pagamento_cartao: {
+      id: 'pagamento_cartao',
+      name: 'Pagamento de Cartão de Crédito',
+      emoji: '💳',
+      keywords: [
+        'pagamento cartao', 'fatura', 'fatura cartao', 'cartao credito',
+        'invoice', 'nubank', 'inter', 'itau', 'bradesco', 'santander',
+        'banco do brasil', 'caixa', 'mastercard', 'visa', 'elo', 'amex',
+        'american express', 'hipercard', 'pag cartao', 'pgto cartao'
+      ]
+    },
     tarifas: {
       id: 'tarifas',
       name: 'Tarifas Bancárias',
