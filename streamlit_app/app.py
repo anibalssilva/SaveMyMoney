@@ -220,6 +220,18 @@ try:
     else:  # Todos
         df_filtered = df.copy()
 
+    # Debug: Mostrar dados ANTES de aplicar filtros de tipo e categoria
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🔍 Debug - Antes dos Filtros")
+    income_before = len(df_filtered[df_filtered['type'] == 'income'])
+    expense_before = len(df_filtered[df_filtered['type'] == 'expense'])
+    st.sidebar.markdown(f"💰 Receitas após filtro de período: {income_before}")
+    st.sidebar.markdown(f"💸 Despesas após filtro de período: {expense_before}")
+
+    # Mostrar categorias selecionadas
+    st.sidebar.markdown(f"**Tipos selecionados:** {transaction_types}")
+    st.sidebar.markdown(f"**Categorias selecionadas:** {len(selected_categories)}")
+
     # Aplicar demais filtros
     # Para receitas (income), não aplicar filtro de categoria se ela estiver vazia
     # Para despesas (expense), aplicar filtro de categoria normalmente
@@ -232,6 +244,13 @@ try:
     )
 
     df_filtered = df_filtered[mask_type & mask_category]
+
+    # Debug: Mostrar dados DEPOIS de aplicar filtros
+    st.sidebar.markdown("### 🔍 Debug - Depois dos Filtros")
+    income_after = len(df_filtered[df_filtered['type'] == 'income'])
+    expense_after = len(df_filtered[df_filtered['type'] == 'expense'])
+    st.sidebar.markdown(f"💰 Receitas após tipo/categoria: {income_after}")
+    st.sidebar.markdown(f"💸 Despesas após tipo/categoria: {expense_after}")
 
     # Filtro de subcategoria (apenas se houver seleção)
     if selected_subcategories:
