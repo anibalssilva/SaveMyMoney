@@ -40,11 +40,14 @@ const FinancialDashboardPage = () => {
     return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
   };
 
-  // Clear date filters
+  // Clear all filters
   const clearFilters = () => {
+    setSelectedType('all');
     setStartDate('');
     setEndDate('');
     setSelectedCategory('all');
+    setSelectedSubcategory('all');
+    setSelectedBarCategory('all');
   };
 
   useEffect(() => {
@@ -876,15 +879,6 @@ const FinancialDashboardPage = () => {
       setSelectedBarCategory('all');
     }
   }, [expenseCategories, selectedBarCategory]);
-
-  const clearFilters = () => {
-    setSelectedType('all');
-    setSelectedMonths([]);
-    setSelectedYears([]);
-    setSelectedCategory('all');
-    setSelectedSubcategory('all');
-    setSelectedBarCategory('all');
-  };
 
   if (loading) {
     return (
