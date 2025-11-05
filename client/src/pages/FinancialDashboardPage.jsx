@@ -419,6 +419,18 @@ const FinancialDashboardPage = () => {
     };
 
     const filtered = transactions.filter(passSelections);
+
+    // Se não houver transações filtradas, retornar dados vazios
+    if (filtered.length === 0) {
+      return {
+        labels: [],
+        datasets: [
+          { label: 'Saldo Acumulado', data: [], borderColor: 'rgba(99, 102, 241, 1)', backgroundColor: 'rgba(99, 102, 241, 0.1)', borderWidth: 3, fill: true, tension: 0.4 },
+          { label: 'Despesas', data: [], borderColor: 'rgba(239, 68, 68, 1)', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 3, fill: true, tension: 0.4 }
+        ]
+      };
+    }
+
     // Determine if we should show daily or monthly view based on date range
     const hasPeriod = startDate && endDate;
     const start = hasPeriod ? new Date(startDate) : null;
@@ -431,41 +443,50 @@ const FinancialDashboardPage = () => {
     let expenseSeries = [];
 
     if (singleMonthAndYear) {
-      const incomeByDay = {};
-      const expenseByDay = {};
-      const expenseForBalanceByDay = {}; // Despesas que afetam o saldo (excluindo cartão alimentação)
+      // Usar timestamp como chave para ordenação correta, mas formatar para exibição
+      const dataByTimestamp = {};
 
       filtered.forEach(t => {
         const d = new Date(t.date);
+        const timestamp = d.getTime();
         const day = d.getDate();
         const month = d.getMonth() + 1;
-        const dateKey = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}`;
+        const displayKey = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}`;
+
+        if (!dataByTimestamp[timestamp]) {
+          dataByTimestamp[timestamp] = {
+            displayKey,
+            income: 0,
+            expense: 0,
+            expenseForBalance: 0
+          };
+        }
 
         if (t.type === 'income') {
-          incomeByDay[dateKey] = (incomeByDay[dateKey] || 0) + t.amount;
+          dataByTimestamp[timestamp].income += t.amount;
         } else if (t.type === 'expense') {
-          expenseByDay[dateKey] = (expenseByDay[dateKey] || 0) + t.amount;
+          dataByTimestamp[timestamp].expense += t.amount;
           // Apenas adiciona ao saldo se NÃO for cartão alimentação
           if (t.paymentMethod !== 'cartao_alimentacao') {
-            expenseForBalanceByDay[dateKey] = (expenseForBalanceByDay[dateKey] || 0) + t.amount;
+            dataByTimestamp[timestamp].expenseForBalance += t.amount;
           }
         }
       });
 
-      const dateKeys = Array.from(new Set([...Object.keys(incomeByDay), ...Object.keys(expenseByDay)]))
-        .sort();
-
-      labels = dateKeys;
+      // Ordenar por timestamp e extrair labels
+      const sortedTimestamps = Object.keys(dataByTimestamp).map(Number).sort((a, b) => a - b);
+      labels = sortedTimestamps.map(ts => dataByTimestamp[ts].displayKey);
 
       // Calculate cumulative balance day by day
       let cumulativeBalance = 0;
       balanceSeries = [];
       expenseSeries = [];
 
-      dateKeys.forEach(dateKey => {
-        const income = incomeByDay[dateKey] || 0;
-        const expense = expenseByDay[dateKey] || 0;
-        const expenseForBalance = expenseForBalanceByDay[dateKey] || 0;
+      sortedTimestamps.forEach(ts => {
+        const data = dataByTimestamp[ts];
+        const income = data.income;
+        const expense = data.expense;
+        const expenseForBalance = data.expenseForBalance;
 
         // Add income to cumulative balance
         cumulativeBalance += income;
