@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { getTransactions, createTransaction, updateTransaction, deleteTransaction } from '../services/api';
 import api from '../services/api';
 import Toast from '../components/Toast';
+import DateInput from '../components/DateInput';
 import './TransactionsPage.css';
 
 // Custom Tooltip Component
@@ -766,8 +767,7 @@ const TransactionsPage = ({ setAlert }) => {
 
           <div className="filter-group">
             <label>📅 De</label>
-            <input
-              type="date"
+            <DateInput
               className="filter-select"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
@@ -776,8 +776,7 @@ const TransactionsPage = ({ setAlert }) => {
 
           <div className="filter-group">
             <label>📅 Até</label>
-            <input
-              type="date"
+            <DateInput
               className="filter-select"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}

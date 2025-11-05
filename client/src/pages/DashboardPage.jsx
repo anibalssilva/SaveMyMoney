@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
 import Toast from '../components/Toast';
+import DateInput from '../components/DateInput';
 import './DashboardPage.css';
 
 const DashboardPage = () => {
@@ -201,8 +202,7 @@ const DashboardPage = () => {
           {/* Start Date Filter */}
           <div className="filter-group">
             <label className="filter-label">📅 DE</label>
-            <input
-              type="date"
+            <DateInput
               className="date-input"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
@@ -212,8 +212,7 @@ const DashboardPage = () => {
           {/* End Date Filter */}
           <div className="filter-group">
             <label className="filter-label">📅 ATÉ</label>
-            <input
-              type="date"
+            <DateInput
               className="date-input"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
