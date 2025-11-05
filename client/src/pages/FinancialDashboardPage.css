@@ -398,6 +398,22 @@
   background: var(--gradient-danger);
 }
 
+.stat-card-balance-positive {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), var(--cyber-card));
+}
+
+.stat-card-balance-positive::before {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.stat-card-balance-negative {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), var(--cyber-card));
+}
+
+.stat-card-balance-negative::before {
+  background: var(--gradient-danger);
+}
+
 .stat-card-balance.positive {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), var(--cyber-card));
 }

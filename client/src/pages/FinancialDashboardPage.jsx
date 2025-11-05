@@ -429,6 +429,7 @@ const FinancialDashboardPage = () => {
     let labels = [];
     let balanceSeries = [];
     let expenseSeries = [];
+    let incomeSeries = [];
 
     if (singleMonthAndYear) {
       // Usar timestamp como chave para ordenação correta, mas formatar para exibição
@@ -469,6 +470,7 @@ const FinancialDashboardPage = () => {
       let cumulativeBalance = 0;
       balanceSeries = [];
       expenseSeries = [];
+      incomeSeries = [];
 
       sortedTimestamps.forEach(ts => {
         const data = dataByTimestamp[ts];
@@ -483,6 +485,7 @@ const FinancialDashboardPage = () => {
 
         balanceSeries.push(cumulativeBalance);
         expenseSeries.push(expense);
+        incomeSeries.push(income);
       });
     } else {
       const incomeByMonth = {};
@@ -510,6 +513,7 @@ const FinancialDashboardPage = () => {
       let cumulativeBalance = 0;
       balanceSeries = [];
       expenseSeries = [];
+      incomeSeries = [];
 
       months.forEach(m => {
         const income = incomeByMonth[m] || 0;
@@ -523,6 +527,7 @@ const FinancialDashboardPage = () => {
 
         balanceSeries.push(cumulativeBalance);
         expenseSeries.push(expense);
+        incomeSeries.push(income);
       });
     }
 
@@ -530,16 +535,16 @@ const FinancialDashboardPage = () => {
       labels,
       datasets: [
         {
-          label: 'Saldo Acumulado',
-          data: balanceSeries,
-          borderColor: 'rgba(59, 130, 246, 1)',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          label: 'Receitas',
+          data: incomeSeries,
+          borderColor: 'rgba(34, 197, 94, 1)',
+          backgroundColor: 'rgba(34, 197, 94, 0.1)',
           borderWidth: 3,
           fill: true,
           tension: 0.4,
           pointRadius: 4,
           pointHoverRadius: 6,
-          pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+          pointBackgroundColor: 'rgba(34, 197, 94, 1)',
           pointBorderColor: '#fff',
           pointBorderWidth: 2,
         },
@@ -554,6 +559,20 @@ const FinancialDashboardPage = () => {
           pointRadius: 4,
           pointHoverRadius: 6,
           pointBackgroundColor: 'rgba(239, 68, 68, 1)',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+        },
+        {
+          label: 'Saldo',
+          data: balanceSeries,
+          borderColor: 'rgba(59, 130, 246, 1)',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: 'rgba(59, 130, 246, 1)',
           pointBorderColor: '#fff',
           pointBorderWidth: 2,
         },
@@ -970,6 +989,14 @@ const FinancialDashboardPage = () => {
             <div className="stat-label">Despesas</div>
             <div className="stat-value">{showStatsValues ? currencyFormatter.format(stats.totalExpenses) : '••••'}</div>
             <div className="stat-detail">{showStatsValues ? `${stats.expenseCount} transações` : '—'}</div>
+          </div>
+        </div>
+        <div className={`stat-card ${stats.balance >= 0 ? 'stat-card-balance-positive' : 'stat-card-balance-negative'}`}>
+          <div className="stat-icon">{stats.balance >= 0 ? '📈' : '📉'}</div>
+          <div className="stat-content">
+            <div className="stat-label">Saldo</div>
+            <div className="stat-value">{showStatsValues ? currencyFormatter.format(stats.balance) : '••••'}</div>
+            <div className="stat-detail">{showStatsValues ? `${stats.incomeCount + stats.expenseCount} transações` : '—'}</div>
           </div>
         </div>
       </div>
