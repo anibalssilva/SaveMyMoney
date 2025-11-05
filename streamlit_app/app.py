@@ -195,14 +195,28 @@ try:
         df_filtered = df.copy()
 
     # Aplicar demais filtros
-    df_filtered = df_filtered[
-        (df_filtered['type'].isin(transaction_types)) &
-        (df_filtered['category'].isin(selected_categories))
-    ]
+    # Para receitas (income), não aplicar filtro de categoria se ela estiver vazia
+    # Para despesas (expense), aplicar filtro de categoria normalmente
+    mask_type = df_filtered['type'].isin(transaction_types)
 
+    # Criar máscara para categoria: incluir se for receita OU se categoria está na lista
+    mask_category = (
+        (df_filtered['type'] == 'income') |  # Incluir todas as receitas
+        (df_filtered['category'].isin(selected_categories))  # OU categoria selecionada
+    )
+
+    df_filtered = df_filtered[mask_type & mask_category]
+
+    # Filtro de subcategoria (apenas se houver seleção)
     if selected_subcategories:
-        df_filtered = df_filtered[df_filtered['subcategory'].isin(selected_subcategories)]
+        # Para receitas, não aplicar filtro de subcategoria se estiver vazio
+        mask_subcat = (
+            (df_filtered['type'] == 'income') |
+            (df_filtered['subcategory'].isin(selected_subcategories))
+        )
+        df_filtered = df_filtered[mask_subcat]
 
+    # Filtro de método de pagamento
     if selected_payment_methods:
         df_filtered = df_filtered[df_filtered['paymentMethod'].isin(selected_payment_methods)]
 
