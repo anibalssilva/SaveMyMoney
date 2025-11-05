@@ -191,18 +191,15 @@ const FinancialDashboardPage = () => {
     return transactions.filter(t => {
       if (selectedType !== 'all' && t.type !== selectedType) return false;
 
-      const tDate = new Date(t.date);
+      // Normalizar datas para comparação (apenas YYYY-MM-DD)
+      const tDateStr = new Date(t.date).toISOString().split('T')[0];
 
       // Filter by date range
       if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        if (tDate < start) return false;
+        if (tDateStr < startDate) return false;
       }
       if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        if (tDate > end) return false;
+        if (tDateStr > endDate) return false;
       }
 
       return true;
