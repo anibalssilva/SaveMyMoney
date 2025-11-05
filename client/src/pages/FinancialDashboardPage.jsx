@@ -20,19 +20,14 @@ const FinancialDashboardPage = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedType, setSelectedType] = useState('all'); // expense, income, all
-  // Multi-select filters
-  const [selectedMonths, setSelectedMonths] = useState([]); // [] => todos os meses
-  const [selectedYears, setSelectedYears] = useState([]);   // [] => todos os anos
+  // Period filters
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [selectedBarCategory, setSelectedBarCategory] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSubcategory, setSelectedSubcategory] = useState('all');
   const [apiSubcategories, setApiSubcategories] = useState([]); // opções vindas do servidor
   const [showStatsValues, setShowStatsValues] = useState(false); // mostrar/ocultar valores dos cards
-  // Dropdown open states
-  const [openMonths, setOpenMonths] = useState(false);
-  const [openYears, setOpenYears] = useState(false);
-  const monthsRef = useRef(null);
-  const yearsRef = useRef(null);
   // Pie chart controls
   const [pieMode, setPieMode] = useState('totals'); // 'totals' | 'income-category'
   const [pieTopN, setPieTopN] = useState(5); // quantidade para Receita/Categoria
@@ -45,52 +40,12 @@ const FinancialDashboardPage = () => {
     return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
   };
 
-  // Helpers to toggle month/year selections
-  const toggleMonth = (monthNumber) => {
-    setSelectedMonths(prev => {
-      if (prev.includes(monthNumber)) {
-        return prev.filter(m => m !== monthNumber);
-      }
-      return [...prev, monthNumber];
-    });
+  // Clear date filters
+  const clearFilters = () => {
+    setStartDate('');
+    setEndDate('');
+    setSelectedCategory('all');
   };
-
-  const toggleYear = (yearNumber) => {
-    setSelectedYears(prev => {
-      if (prev.includes(yearNumber)) {
-        return prev.filter(y => y !== yearNumber);
-      }
-      return [...prev, yearNumber];
-    });
-  };
-
-  // Close dropdown if selecting the "Todos" option
-  const clearMonths = () => { setSelectedMonths([]); setOpenMonths(false); };
-  const clearYears = () => { setSelectedYears([]); setOpenYears(false); };
-
-  // Close dropdowns on outside click
-  useEffect(() => {
-    const handler = (e) => {
-      if (monthsRef.current && !monthsRef.current.contains(e.target)) setOpenMonths(false);
-      if (yearsRef.current && !yearsRef.current.contains(e.target)) setOpenYears(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const selectedMonthsLabel = useMemo(() => {
-    if (selectedMonths.length === 0) return 'Todos os Meses';
-    if (selectedMonths.length === 1) return MONTH_NAMES[selectedMonths[0] - 1];
-    if (selectedMonths.length === 2) return `${MONTH_NAMES[selectedMonths[0] - 1]}, ${MONTH_NAMES[selectedMonths[1] - 1]}`;
-    return `${selectedMonths.length} meses selecionados`;
-  }, [selectedMonths]);
-
-  const selectedYearsLabel = useMemo(() => {
-    if (selectedYears.length === 0) return 'Todos os Anos';
-    if (selectedYears.length === 1) return String(selectedYears[0]);
-    if (selectedYears.length === 2) return `${selectedYears[0]}, ${selectedYears[1]}`;
-    return `${selectedYears.length} anos selecionados`;
-  }, [selectedYears]);
 
   useEffect(() => {
     fetchTransactions();
@@ -121,14 +76,6 @@ const FinancialDashboardPage = () => {
       setLoading(false);
     }
   };
-  const availableYears = useMemo(() => {
-    const years = new Set();
-    transactions.forEach(t => {
-      const date = new Date(t.date);
-      years.add(date.getFullYear());
-    });
-    return Array.from(years).sort((a, b) => a - b);
-  }, [transactions]);
 
   const DEFAULT_SUBCATEGORY_VALUE = 'outros';
   const DEFAULT_SUBCATEGORY_LABEL = 'Outros';
@@ -242,14 +189,22 @@ const FinancialDashboardPage = () => {
       if (selectedType !== 'all' && t.type !== selectedType) return false;
 
       const tDate = new Date(t.date);
-      const tMonth = tDate.getMonth() + 1; // 1-12
-      const tYear = tDate.getFullYear();
-      if (selectedMonths.length > 0 && !selectedMonths.includes(tMonth)) return false;
-      if (selectedYears.length > 0 && !selectedYears.includes(tYear)) return false;
+
+      // Filter by date range
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        if (tDate < start) return false;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        if (tDate > end) return false;
+      }
 
       return true;
     });
-  }, [transactions, selectedType, selectedMonths, selectedYears]);
+  }, [transactions, selectedType, startDate, endDate]);
 
   const availableCategories = useMemo(() => {
     const categories = new Set();
@@ -443,58 +398,71 @@ const FinancialDashboardPage = () => {
   const lineChartData = useMemo(() => {
     const passSelections = (t) => {
       const d = new Date(t.date);
-      const m = d.getMonth() + 1;
-      const y = d.getFullYear();
-      if (selectedMonths.length > 0 && !selectedMonths.includes(m)) return false;
-      if (selectedYears.length > 0 && !selectedYears.includes(y)) return false;
+
+      // Filter by date range
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        if (d < start) return false;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        if (d > end) return false;
+      }
+
       if (selectedCategory !== 'all' && t.category !== selectedCategory) return false;
       return true;
     };
 
     const filtered = transactions.filter(passSelections);
-    const singleMonthAndYear = selectedMonths.length === 1 && selectedYears.length === 1;
+    // Determine if we should show daily or monthly view based on date range
+    const hasPeriod = startDate && endDate;
+    const start = hasPeriod ? new Date(startDate) : null;
+    const end = hasPeriod ? new Date(endDate) : null;
+    const daysDiff = hasPeriod ? Math.ceil((end - start) / (1000 * 60 * 60 * 24)) : 0;
+    const singleMonthAndYear = hasPeriod && daysDiff <= 31;
 
     let labels = [];
     let balanceSeries = [];
     let expenseSeries = [];
 
     if (singleMonthAndYear) {
-      const targetMonth = selectedMonths[0];
-      const targetYear = selectedYears[0];
       const incomeByDay = {};
       const expenseByDay = {};
       const expenseForBalanceByDay = {}; // Despesas que afetam o saldo (excluindo cartão alimentação)
 
       filtered.forEach(t => {
         const d = new Date(t.date);
-        if (d.getMonth() + 1 !== targetMonth || d.getFullYear() !== targetYear) return;
         const day = d.getDate();
+        const month = d.getMonth() + 1;
+        const dateKey = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}`;
+
         if (t.type === 'income') {
-          incomeByDay[day] = (incomeByDay[day] || 0) + t.amount;
+          incomeByDay[dateKey] = (incomeByDay[dateKey] || 0) + t.amount;
         } else if (t.type === 'expense') {
-          expenseByDay[day] = (expenseByDay[day] || 0) + t.amount;
+          expenseByDay[dateKey] = (expenseByDay[dateKey] || 0) + t.amount;
           // Apenas adiciona ao saldo se NÃO for cartão alimentação
           if (t.paymentMethod !== 'cartao_alimentacao') {
-            expenseForBalanceByDay[day] = (expenseForBalanceByDay[day] || 0) + t.amount;
+            expenseForBalanceByDay[dateKey] = (expenseForBalanceByDay[dateKey] || 0) + t.amount;
           }
         }
       });
 
-      const days = Array.from(new Set([...Object.keys(incomeByDay), ...Object.keys(expenseByDay)]))
-        .map(n => parseInt(n, 10))
-        .sort((a, b) => a - b);
+      const dateKeys = Array.from(new Set([...Object.keys(incomeByDay), ...Object.keys(expenseByDay)]))
+        .sort();
 
-      labels = days.map(d => `${String(d).padStart(2, '0')}/${String(targetMonth).padStart(2, '0')}`);
+      labels = dateKeys;
 
       // Calculate cumulative balance day by day
       let cumulativeBalance = 0;
       balanceSeries = [];
       expenseSeries = [];
 
-      days.forEach(d => {
-        const income = incomeByDay[d] || 0;
-        const expense = expenseByDay[d] || 0;
-        const expenseForBalance = expenseForBalanceByDay[d] || 0;
+      dateKeys.forEach(dateKey => {
+        const income = incomeByDay[dateKey] || 0;
+        const expense = expenseByDay[dateKey] || 0;
+        const expenseForBalance = expenseForBalanceByDay[dateKey] || 0;
 
         // Add income to cumulative balance
         cumulativeBalance += income;
@@ -579,7 +547,7 @@ const FinancialDashboardPage = () => {
         },
       ]
     };
-  }, [transactions, selectedMonths, selectedYears, selectedCategory]);
+  }, [transactions, startDate, endDate, selectedCategory]);
 
   // Prepare data for Pie Chart (category distribution)
   const pieChartData = useMemo(() => {
@@ -944,87 +912,30 @@ const FinancialDashboardPage = () => {
         </div>
 
         <div className="filters-grid">
-          <div className="filter-group" ref={monthsRef}>
-            <label className="filter-label">Mês</label>
-            <button
-              type="button"
-              className={`multi-dd-toggle ${openMonths ? 'open' : ''}`}
-              onClick={() => setOpenMonths(v => !v)}
-            >
-              <span>{selectedMonthsLabel}</span>
-              <span className="caret">▾</span>
-            </button>
-            {openMonths && (
-              <div className="multi-dd-panel">
-                <label className={`multi-option ${selectedMonths.length === 0 ? 'active' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={selectedMonths.length === 0}
-                    onChange={clearMonths}
-                  />
-                  Todos os Meses
-                </label>
-                <div className="multi-options is-expanded">
-                  {MONTH_NAMES.map((name, idx) => {
-                    const value = idx + 1;
-                    const checked = selectedMonths.includes(value);
-                    return (
-                      <label key={value} className={`multi-option ${checked ? 'active' : ''}`}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleMonth(value)}
-                        />
-                        {name}
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+          <div className="filter-group">
+            <label className="filter-label">📅 De</label>
+            <input
+              type="date"
+              className="date-input"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              placeholder="Data inicial"
+            />
           </div>
 
-          <div className="filter-group" ref={yearsRef}>
-            <label className="filter-label">Ano</label>
-            <button
-              type="button"
-              className={`multi-dd-toggle ${openYears ? 'open' : ''}`}
-              onClick={() => setOpenYears(v => !v)}
-            >
-              <span>{selectedYearsLabel}</span>
-              <span className="caret">▾</span>
-            </button>
-            {openYears && (
-              <div className="multi-dd-panel">
-                <label className={`multi-option ${selectedYears.length === 0 ? 'active' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={selectedYears.length === 0}
-                    onChange={clearYears}
-                  />
-                  Todos os Anos
-                </label>
-                <div className="multi-options is-expanded">
-                  {availableYears.map((year) => {
-                    const checked = selectedYears.includes(year);
-                    return (
-                      <label key={year} className={`multi-option ${checked ? 'active' : ''}`}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleYear(year)}
-                        />
-                        {year}
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+          <div className="filter-group">
+            <label className="filter-label">📅 Até</label>
+            <input
+              type="date"
+              className="date-input"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              placeholder="Data final"
+            />
           </div>
         </div>
 
-        {(selectedMonths.length > 0 || selectedYears.length > 0 || selectedCategory !== 'all') && (
+        {(startDate || endDate || selectedCategory !== 'all') && (
           <button className="clear-filters-btn" onClick={clearFilters}>
             ✖ Limpar Filtros
           </button>

@@ -167,6 +167,29 @@
   box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.2);
 }
 
+.date-input {
+  background: var(--cyber-dark);
+  border: 1px solid var(--cyber-border);
+  border-radius: var(--radius-sm);
+  color: white;
+  padding: var(--space-sm) var(--space-md);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  color-scheme: dark;
+}
+
+.date-input:hover {
+  border-color: var(--cyber-primary);
+  box-shadow: 0 0 0 2px rgba(0, 240, 255, 0.1);
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: var(--cyber-primary);
+  box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.2);
+}
+
 .filter-select:disabled {
   opacity: 0.55;
   cursor: not-allowed;
