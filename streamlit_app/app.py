@@ -235,6 +235,20 @@ try:
     st.sidebar.markdown(f"**Tipos selecionados:** {transaction_types}")
     st.sidebar.markdown(f"**Categorias selecionadas:** {len(selected_categories)}")
 
+    # Debug detalhado: Mostrar TODAS as receitas no período
+    if income_before > 0:
+        st.sidebar.markdown("#### 🔍 Receitas encontradas no período:")
+        income_df = df_filtered[df_filtered['type'] == 'income']
+        for idx, row in income_df.iterrows():
+            st.sidebar.markdown(f"- **{row['description']}**: {row['category']} (R$ {row['amount']:.2f})")
+            st.sidebar.markdown(f"  📅 Data: {row['date'].strftime('%d/%m/%Y')}")
+
+    # Mostrar categorias de receita disponíveis vs selecionadas
+    if 'income' in transaction_types:
+        st.sidebar.markdown("#### 📋 Categorias de Receita:")
+        st.sidebar.markdown(f"**Disponíveis:** {income_cats}")
+        st.sidebar.markdown(f"**Selecionadas:** {[c for c in selected_categories if c in income_cats]}")
+
     # Aplicar demais filtros
     # Para receitas (income), não aplicar filtro de categoria se ela estiver vazia
     # Para despesas (expense), aplicar filtro de categoria normalmente
