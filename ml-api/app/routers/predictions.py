@@ -10,6 +10,7 @@ from app.ml.linear_predictor import LinearPredictor
 from app.ml.lstm_predictor import LSTMPredictor, TENSORFLOW_AVAILABLE
 from datetime import datetime
 from typing import List, Dict
+from bson import ObjectId
 
 router = APIRouter()
 
@@ -25,7 +26,15 @@ async def get_user_transactions(user_id: str, category: str = None) -> List[Dict
 
         transactions_collection = db.transactions
 
-        query = {"user": user_id, "type": "expense"}
+        # Convert user_id string to ObjectId for MongoDB query
+        try:
+            user_object_id = ObjectId(user_id)
+            query = {"user": user_object_id, "type": "expense"}
+        except Exception as e:
+            print(f"[DB ERROR] Invalid ObjectId format for user_id={user_id}: {e}")
+            # Fallback: try as string in case some records use string
+            query = {"user": user_id, "type": "expense"}
+
         if category:
             query["category"] = category
 
