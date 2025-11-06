@@ -174,9 +174,11 @@ try:
 
     # Aplicar filtro de período baseado na seleção
     if filter_type == "Data Específica":
+        # Usar ontem como padrão (dia anterior)
+        yesterday = datetime.now() - timedelta(days=1)
         selected_date = st.sidebar.date_input(
             "Selecione a Data",
-            value=datetime.now(),
+            value=yesterday,
             min_value=df['date'].min().date(),
             max_value=df['date'].max().date(),
             format="DD/MM/YYYY"
@@ -223,32 +225,6 @@ try:
     else:  # Todos
         df_filtered = df.copy()
 
-    # Debug: Mostrar dados ANTES de aplicar filtros de tipo e categoria
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🔍 Debug - Antes dos Filtros")
-    income_before = len(df_filtered[df_filtered['type'] == 'income'])
-    expense_before = len(df_filtered[df_filtered['type'] == 'expense'])
-    st.sidebar.markdown(f"💰 Receitas após filtro de período: {income_before}")
-    st.sidebar.markdown(f"💸 Despesas após filtro de período: {expense_before}")
-
-    # Mostrar categorias selecionadas
-    st.sidebar.markdown(f"**Tipos selecionados:** {transaction_types}")
-    st.sidebar.markdown(f"**Categorias selecionadas:** {len(selected_categories)}")
-
-    # Debug detalhado: Mostrar TODAS as receitas no período
-    if income_before > 0:
-        st.sidebar.markdown("#### 🔍 Receitas encontradas no período:")
-        income_df = df_filtered[df_filtered['type'] == 'income']
-        for idx, row in income_df.iterrows():
-            st.sidebar.markdown(f"- **{row['description']}**: {row['category']} (R$ {row['amount']:.2f})")
-            st.sidebar.markdown(f"  📅 Data: {row['date'].strftime('%d/%m/%Y')}")
-
-    # Mostrar categorias de receita disponíveis vs selecionadas
-    if 'income' in transaction_types:
-        st.sidebar.markdown("#### 📋 Categorias de Receita:")
-        st.sidebar.markdown(f"**Disponíveis:** {income_cats}")
-        st.sidebar.markdown(f"**Selecionadas:** {[c for c in selected_categories if c in income_cats]}")
-
     # Aplicar demais filtros
     # Para receitas (income), não aplicar filtro de categoria se ela estiver vazia
     # Para despesas (expense), aplicar filtro de categoria normalmente
@@ -261,13 +237,6 @@ try:
     )
 
     df_filtered = df_filtered[mask_type & mask_category]
-
-    # Debug: Mostrar dados DEPOIS de aplicar filtros
-    st.sidebar.markdown("### 🔍 Debug - Depois dos Filtros")
-    income_after = len(df_filtered[df_filtered['type'] == 'income'])
-    expense_after = len(df_filtered[df_filtered['type'] == 'expense'])
-    st.sidebar.markdown(f"💰 Receitas após tipo/categoria: {income_after}")
-    st.sidebar.markdown(f"💸 Despesas após tipo/categoria: {expense_after}")
 
     # Filtro de subcategoria (apenas se houver seleção)
     if selected_subcategories:
@@ -292,29 +261,8 @@ try:
         st.warning("⚠️ Nenhuma transação encontrada com os filtros selecionados.")
         st.stop()
 
-    # Debug: Mostrar estatísticas de filtragem
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 📊 Estatísticas da Filtragem")
-    st.sidebar.markdown(f"**Total original:** {len(df)} transações")
-    st.sidebar.markdown(f"**Após filtros:** {len(df_filtered)} transações")
-    income_count = len(df_filtered[df_filtered['type'] == 'income'])
-    expense_count = len(df_filtered[df_filtered['type'] == 'expense'])
-    st.sidebar.markdown(f"- 💰 Receitas: {income_count}")
-    st.sidebar.markdown(f"- 💸 Despesas: {expense_count}")
-
     # Seção de Métricas
     st.markdown("---")
-
-    # Debug: Mostrar valores que estão sendo somados
-    income_df = df_filtered[df_filtered['type'] == 'income']
-    st.sidebar.markdown("#### 💵 Valores de Receita no df_filtered:")
-    if len(income_df) > 0:
-        for idx, row in income_df.iterrows():
-            st.sidebar.markdown(f"- R$ {row['amount']:.2f}")
-        st.sidebar.markdown(f"**Soma:** R$ {income_df['amount'].sum():.2f}")
-    else:
-        st.sidebar.markdown("Nenhuma receita encontrada!")
-
     col1, col2, col3, col4 = st.columns(4)
 
     total_income = df_filtered[df_filtered['type'] == 'income']['amount'].sum()
