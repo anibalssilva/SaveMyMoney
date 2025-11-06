@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-
+import DateInput from './DateInput';
 import './Modal.css';
 
 const AddTransactionModal = ({ asset, onClose, onSubmit }) => {
@@ -320,9 +320,7 @@ const AddTransactionModal = ({ asset, onClose, onSubmit }) => {
 
               <label htmlFor="date">Data *</label>
 
-              <input
-
-                type="date"
+              <DateInput
 
                 id="date"
 

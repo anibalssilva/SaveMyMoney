@@ -549,8 +549,7 @@ const TransactionsPage = ({ setAlert }) => {
             <div className="form-row">
               <div className="form-group">
                 <label>Data</label>
-                <input
-                  type="date"
+                <DateInput
                   name="date"
                   value={formData.date}
                   onChange={onChange}
