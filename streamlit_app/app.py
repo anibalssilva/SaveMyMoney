@@ -299,6 +299,17 @@ try:
 
     # Seção de Métricas
     st.markdown("---")
+
+    # Debug: Mostrar valores que estão sendo somados
+    income_df = df_filtered[df_filtered['type'] == 'income']
+    st.sidebar.markdown("#### 💵 Valores de Receita no df_filtered:")
+    if len(income_df) > 0:
+        for idx, row in income_df.iterrows():
+            st.sidebar.markdown(f"- R$ {row['amount']:.2f}")
+        st.sidebar.markdown(f"**Soma:** R$ {income_df['amount'].sum():.2f}")
+    else:
+        st.sidebar.markdown("Nenhuma receita encontrada!")
+
     col1, col2, col3, col4 = st.columns(4)
 
     total_income = df_filtered[df_filtered['type'] == 'income']['amount'].sum()
