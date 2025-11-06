@@ -280,7 +280,12 @@ try:
 
     # Filtro de método de pagamento
     if selected_payment_methods:
-        df_filtered = df_filtered[df_filtered['paymentMethod'].isin(selected_payment_methods)]
+        # Para receitas, não aplicar filtro de método de pagamento
+        mask_payment = (
+            (df_filtered['type'] == 'income') |
+            (df_filtered['paymentMethod'].isin(selected_payment_methods))
+        )
+        df_filtered = df_filtered[mask_payment]
 
     # Verificar se há dados após filtragem
     if df_filtered.empty:
