@@ -27,6 +27,9 @@ class LinearPredictor:
         daily_expenses = df.groupby(df['date'].dt.date)['amount'].sum().reset_index()
         daily_expenses.columns = ['date', 'amount']
 
+        # Convert date column back to datetime for calculations
+        daily_expenses['date'] = pd.to_datetime(daily_expenses['date'])
+
         # Create features: days since first transaction
         first_date = daily_expenses['date'].min()
         daily_expenses['days_since_start'] = (
