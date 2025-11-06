@@ -15,22 +15,36 @@ router = APIRouter()
 
 async def get_user_transactions(user_id: str, category: str = None) -> List[Dict]:
     """Fetch user transactions from MongoDB"""
-    db = get_database()
-    transactions_collection = db.transactions
+    try:
+        print(f"[DB] Fetching transactions for user_id={user_id}, category={category}")
+        db = get_database()
 
-    query = {"user": user_id, "type": "expense"}
-    if category:
-        query["category"] = category
+        if db is None:
+            print("[DB ERROR] Database connection is None!")
+            return []
 
-    cursor = transactions_collection.find(query).sort("date", 1)
-    transactions = await cursor.to_list(length=1000)
+        transactions_collection = db.transactions
 
-    # Convert MongoDB ObjectId to string
-    for trans in transactions:
-        trans['_id'] = str(trans['_id'])
-        trans['user'] = str(trans['user'])
+        query = {"user": user_id, "type": "expense"}
+        if category:
+            query["category"] = category
 
-    return transactions
+        print(f"[DB] Query: {query}")
+        cursor = transactions_collection.find(query).sort("date", 1)
+        transactions = await cursor.to_list(length=1000)
+        print(f"[DB] Retrieved {len(transactions)} transactions")
+
+        # Convert MongoDB ObjectId to string
+        for trans in transactions:
+            trans['_id'] = str(trans['_id'])
+            trans['user'] = str(trans['user'])
+
+        return transactions
+    except Exception as e:
+        print(f"[DB ERROR] Error fetching transactions: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return []
 
 @router.post("/predict", response_model=PredictionResponse)
 async def predict_expenses(request: PredictionRequest):
@@ -38,8 +52,11 @@ async def predict_expenses(request: PredictionRequest):
     Predict future expenses using Linear Regression or LSTM
     """
     try:
+        print(f"[PREDICT] Request: user_id={request.user_id}, category={request.category}, days_ahead={request.days_ahead}, model={request.model_type}")
+
         # Fetch user transactions
         transactions = await get_user_transactions(request.user_id, request.category)
+        print(f"[PREDICT] Found {len(transactions)} transactions")
 
         if not transactions:
             raise HTTPException(
@@ -58,8 +75,11 @@ async def predict_expenses(request: PredictionRequest):
         else:
             predictor = LinearPredictor()
 
+        print(f"[PREDICT] Using predictor: {predictor.__class__.__name__}")
+
         # Make predictions
         result = predictor.predict(transactions, request.days_ahead)
+        print(f"[PREDICT] Prediction successful: total={result['total_predicted']}, trend={result['trend']}")
 
         # Prepare response
         response = PredictionResponse(
@@ -75,9 +95,15 @@ async def predict_expenses(request: PredictionRequest):
 
         return response
 
+    except HTTPException:
+        raise
     except ValueError as e:
+        print(f"[PREDICT ERROR] ValueError: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        print(f"[PREDICT ERROR] Exception: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
 @router.get("/insights/{user_id}", response_model=InsightsResponse)
